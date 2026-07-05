@@ -1,10 +1,18 @@
-import { PlaceholderCard } from "@/components/PlaceholderCard";
+import { PageHeader } from "@/components/app/PageHeader";
+import { StudentClassFeed } from "@/components/student/StudentClassFeed";
+import { getStudentClassFeed } from "@/lib/db/classes";
 
 export default function StudentClassPage() {
+  const items = getStudentClassFeed();
+
   return (
-    <PlaceholderCard
-      title="כיתה"
-      description="מקום להצגת פעילות הכיתה, נושאים שנלמדים עכשיו ועדכונים מהמורה."
-    />
+    <div className="space-y-4">
+      <PageHeader
+        eyebrow="כיתה"
+        title="כיתה"
+        description="פעילות כיתתית, נושא השיעור ועדכונים מהמורה."
+      />
+      <StudentClassFeed items={items} />
+    </div>
   );
 }

@@ -19,7 +19,6 @@ build
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 
 # logs
 npm-debug.log*

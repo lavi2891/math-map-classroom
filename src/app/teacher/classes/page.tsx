@@ -1,10 +1,23 @@
-import { PlaceholderCard } from "@/components/PlaceholderCard";
+import { PageHeader } from "@/components/app/PageHeader";
+import { TeacherClassCard } from "@/components/teacher/TeacherClassCard";
+import { getTeacherClasses } from "@/lib/db/classes";
 
 export default function TeacherClassesPage() {
+  const classes = getTeacherClasses();
+
   return (
-    <PlaceholderCard
-      title="כיתות"
-      description="רשימת כיתות מדומה עם מקום לסיכום התקדמות ותלמידים שצריכים תשומת לב."
-    />
+    <div className="space-y-4">
+      <PageHeader
+        eyebrow="מורה"
+        title="כיתות"
+        description="סקירה מהירה של כיתות פעילות ומוקדי למידה."
+      />
+
+      <div className="grid gap-3">
+        {classes.map((summary) => (
+          <TeacherClassCard key={summary.id} summary={summary} />
+        ))}
+      </div>
+    </div>
   );
 }

@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "מפת מתמטיקה כיתתית",
-  description: "מעטפת אפליקציה ללמידת מתמטיקה בכיתה",
+  description: "מערכת מעקב מתמטיקה כיתתית לתלמידים ומורים",
 };
 
 export default function RootLayout({

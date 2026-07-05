@@ -1,16 +1,15 @@
 import type { ReactNode } from "react";
-import { BottomNav } from "@/components/BottomNav";
-import type { MockUser, NavItem } from "@/shared/types";
+import { BottomNav } from "@/components/app/BottomNav";
+import type { Profile } from "@/types";
 
 type AppShellProps = {
   children: ReactNode;
-  navItems: NavItem[];
-  user: MockUser;
+  user: Profile;
 };
 
-export function AppShell({ children, navItems, user }: AppShellProps) {
+export function AppShell({ children, user }: AppShellProps) {
   return (
-    <div className="min-h-screen pb-24">
+    <div dir="rtl" className="min-h-screen pb-24">
       <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/90 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-md items-center justify-between gap-3">
           <div>
@@ -19,14 +18,14 @@ export function AppShell({ children, navItems, user }: AppShellProps) {
             </p>
             <h1 className="text-lg font-bold text-stone-950">{user.name}</h1>
           </div>
-          <div className="rounded-md bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-700">
+          <span className="rounded-md bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-700">
             Mock
-          </div>
+          </span>
         </div>
       </header>
 
       <main className="mx-auto max-w-md px-4 py-5">{children}</main>
-      <BottomNav items={navItems} />
+      <BottomNav role={user.role} />
     </div>
   );
 }
