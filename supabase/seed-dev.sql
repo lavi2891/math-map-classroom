@@ -1,0 +1,188 @@
+-- Development seed examples only.
+-- Do not run this file as-is.
+-- Replace every *_HERE placeholder with IDs from your local/dev Supabase project.
+-- Never commit real auth user IDs or production data in this file.
+
+-- =========================================================
+-- 1. Create a class after a teacher auth user exists
+-- =========================================================
+
+-- insert into public.classes (
+--   id,
+--   name,
+--   grade,
+--   class_code
+-- )
+-- values (
+--   'CLASS_ID_HERE',
+--   'ז2',
+--   7,
+--   'Z7A'
+-- );
+
+-- =========================================================
+-- 2. Add the teacher profile after the teacher auth user exists
+-- =========================================================
+
+-- insert into public.profiles (
+--   id,
+--   display_name,
+--   username
+-- )
+-- values (
+--   'TEACHER_AUTH_USER_ID_HERE',
+--   'מורה לדוגמה',
+--   'teacher-demo'
+-- )
+-- on conflict (id) do update
+-- set display_name = excluded.display_name,
+--     username = excluded.username;
+
+-- =========================================================
+-- 3. Add the teacher as owner in class_memberships
+-- =========================================================
+
+-- insert into public.class_memberships (
+--   class_id,
+--   user_id,
+--   role,
+--   active
+-- )
+-- values (
+--   'CLASS_ID_HERE',
+--   'TEACHER_AUTH_USER_ID_HERE',
+--   'owner',
+--   true
+-- )
+-- on conflict (class_id, user_id) do update
+-- set role = excluded.role,
+--     active = excluded.active,
+--     updated_at = now();
+
+-- =========================================================
+-- 4. Add student profiles after auth users exist
+-- =========================================================
+
+-- insert into public.profiles (
+--   id,
+--   display_name,
+--   username
+-- )
+-- values
+--   (
+--     'STUDENT_AUTH_USER_ID_HERE',
+--     'תלמיד לדוגמה 001',
+--     'z7a001'
+--   ),
+--   (
+--     'ANOTHER_STUDENT_AUTH_USER_ID_HERE',
+--     'תלמיד לדוגמה 002',
+--     'z7a002'
+--   )
+-- on conflict (id) do update
+-- set display_name = excluded.display_name,
+--     username = excluded.username;
+
+-- =========================================================
+-- 5. Add students to class_memberships
+-- =========================================================
+
+-- insert into public.class_memberships (
+--   class_id,
+--   user_id,
+--   role,
+--   student_code,
+--   active
+-- )
+-- values
+--   (
+--     'CLASS_ID_HERE',
+--     'STUDENT_AUTH_USER_ID_HERE',
+--     'student',
+--     '001',
+--     true
+--   ),
+--   (
+--     'CLASS_ID_HERE',
+--     'ANOTHER_STUDENT_AUTH_USER_ID_HERE',
+--     'student',
+--     '002',
+--     true
+--   )
+-- on conflict (class_id, user_id) do update
+-- set role = excluded.role,
+--     student_code = excluded.student_code,
+--     active = excluded.active,
+--     updated_at = now();
+
+-- =========================================================
+-- 6. Create sample announcements
+-- =========================================================
+
+-- insert into public.announcements (
+--   class_id,
+--   title,
+--   body,
+--   visible_from,
+--   is_pinned,
+--   created_by
+-- )
+-- values
+--   (
+--     'CLASS_ID_HERE',
+--     'ברוכים הבאים',
+--     'השבוע נתחיל לעבוד על יחס ופרופורציה.',
+--     now(),
+--     true,
+--     'TEACHER_AUTH_USER_ID_HERE'
+--   ),
+--   (
+--     'CLASS_ID_HERE',
+--     'תזכורת לשיעור הבא',
+--     'להביא מחברת תרגול וכלי כתיבה.',
+--     now(),
+--     false,
+--     'TEACHER_AUTH_USER_ID_HERE'
+--   );
+
+-- =========================================================
+-- 7. Create sample homework assignments
+-- =========================================================
+
+-- insert into public.homework_assignments (
+--   class_id,
+--   title,
+--   description,
+--   visible_from,
+--   due_at,
+--   require_status,
+--   require_understanding,
+--   require_photo,
+--   allow_external_url,
+--   created_by
+-- )
+-- values
+--   (
+--     'CLASS_ID_HERE',
+--     'תרגול יחס',
+--     'פתרו את שאלות 1-8 בנושא יחס.',
+--     now(),
+--     now() + interval '7 days',
+--     true,
+--     true,
+--     false,
+--     false,
+--     'TEACHER_AUTH_USER_ID_HERE'
+--   ),
+--   (
+--     'CLASS_ID_HERE',
+--     'חזרה על שברים',
+--     'חזרה קצרה על צמצום והרחבת שברים.',
+--     now(),
+--     now() + interval '10 days',
+--     true,
+--     true,
+--     true,
+--     false,
+--     'TEACHER_AUTH_USER_ID_HERE'
+--   );
