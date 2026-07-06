@@ -1,8 +1,11 @@
 export type ClassSummary = {
   id: string;
   name: string;
+  grade: number;
+  classCode: string;
+  role?: string;
   studentCount: number;
-  focus: string;
+  focus?: string;
 };
 
 export type ClassFeedItem = {

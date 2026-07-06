@@ -1,18 +1,28 @@
 import { PageHeader } from "@/components/app/PageHeader";
 import { StudentHomeFeed } from "@/components/student/StudentHomeFeed";
-import { getStudentHomeCards } from "@/lib/db/knowledge";
+import { getLatestStudentAnnouncements } from "@/lib/db/announcements";
+import { getStudentClasses } from "@/lib/db/classes";
+import { getOpenStudentHomework } from "@/lib/db/homework";
 
-export default function StudentHomePage() {
-  const cards = getStudentHomeCards();
+export default async function StudentHomePage() {
+  const [classes, announcements, homework] = await Promise.all([
+    getStudentClasses(),
+    getLatestStudentAnnouncements(),
+    getOpenStudentHomework(),
+  ]);
 
   return (
     <div className="space-y-4">
       <PageHeader
         eyebrow="תלמיד/ה"
         title="בית"
-        description="תקציר יומי עם משימות, התקדמות ונושאים שדורשים תשומת לב."
+        description="הכיתות שלך, הודעות אחרונות ושיעורי בית פתוחים."
       />
-      <StudentHomeFeed cards={cards} />
+      <StudentHomeFeed
+        announcements={announcements}
+        classes={classes}
+        homework={homework}
+      />
     </div>
   );
 }

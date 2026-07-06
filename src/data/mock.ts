@@ -117,9 +117,30 @@ export const studentProfileCards: AppCard[] = [
 ];
 
 export const classSummaries: ClassSummary[] = [
-  { id: "class-1", name: "ז2", studentCount: 31, focus: "יחסים ופרופורציה" },
-  { id: "class-2", name: "ז4", studentCount: 29, focus: "משוואות בסיסיות" },
-  { id: "class-3", name: "ח1", studentCount: 27, focus: "פונקציות" },
+  {
+    classCode: "Z7A",
+    grade: 7,
+    id: "class-1",
+    name: "ז2",
+    studentCount: 31,
+    focus: "יחסים ופרופורציה",
+  },
+  {
+    classCode: "Z7D",
+    grade: 7,
+    id: "class-2",
+    name: "ז4",
+    studentCount: 29,
+    focus: "משוואות בסיסיות",
+  },
+  {
+    classCode: "H8A",
+    grade: 8,
+    id: "class-3",
+    name: "ח1",
+    studentCount: 27,
+    focus: "פונקציות",
+  },
 ];
 
 export const homeworkAssignments: HomeworkAssignment[] = [
