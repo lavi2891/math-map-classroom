@@ -1,20 +1,22 @@
 import type { ReactNode } from "react";
 import { BottomNav } from "@/components/app/BottomNav";
-import type { Profile } from "@/types";
+import { APP_ROLE_LABELS } from "@/lib/constants/roles";
+import type { AppRole, Profile } from "@/types";
 
 type AppShellProps = {
   children: ReactNode;
+  navigationRole: AppRole;
   user: Profile;
 };
 
-export function AppShell({ children, user }: AppShellProps) {
+export function AppShell({ children, navigationRole, user }: AppShellProps) {
   return (
     <div dir="rtl" className="min-h-screen pb-24">
       <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/90 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-md items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold text-teal-700">
-              {user.role === "student" ? "תלמיד/ה" : "מורה"}
+              {APP_ROLE_LABELS[navigationRole]}
             </p>
             <h1 className="text-lg font-bold text-stone-950">{user.name}</h1>
           </div>
@@ -25,7 +27,7 @@ export function AppShell({ children, user }: AppShellProps) {
       </header>
 
       <main className="mx-auto max-w-md px-4 py-5">{children}</main>
-      <BottomNav role={user.role} />
+      <BottomNav role={navigationRole} />
     </div>
   );
 }

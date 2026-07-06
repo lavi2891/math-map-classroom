@@ -6,10 +6,10 @@ import {
   STUDENT_NAV_ITEMS,
   TEACHER_NAV_ITEMS,
 } from "@/lib/constants/navigation";
-import type { Role } from "@/types";
+import type { AppRole } from "@/types";
 
 type BottomNavProps = {
-  role: Role;
+  role: AppRole;
 };
 
 export function BottomNav({ role }: BottomNavProps) {

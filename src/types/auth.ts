@@ -1,7 +1,15 @@
-export type Role = "student" | "teacher";
+export type AppRole = "student" | "teacher";
+
+export type ClassMembershipRole = "owner" | "teacher" | "viewer" | "student";
 
 export type Profile = {
   id: string;
   name: string;
-  role: Role;
+};
+
+export type ClassMembership = {
+  classId: string;
+  userId: string;
+  role: ClassMembershipRole;
+  active: boolean;
 };

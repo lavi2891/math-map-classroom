@@ -1,9 +1,17 @@
-import type { Profile, Role } from "@/types";
+import type { AppRole, ClassMembership } from "@/types";
+import { getNavigationRole } from "./getCurrentProfile";
 
-export function requireRole(profile: Profile, role: Role) {
-  if (profile.role !== role) {
-    throw new Error(`Expected mock role "${role}" but received "${profile.role}".`);
+export function requireNavigationRole(
+  memberships: ClassMembership[],
+  expectedRole: AppRole,
+) {
+  const actualRole = getNavigationRole(memberships);
+
+  if (actualRole !== expectedRole) {
+    throw new Error(
+      `Expected mock navigation role "${expectedRole}" but received "${actualRole}".`,
+    );
   }
 
-  return profile;
+  return actualRole;
 }

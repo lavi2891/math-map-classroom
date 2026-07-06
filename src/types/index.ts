@@ -1,4 +1,9 @@
-export type { Profile, Role } from "./auth";
+export type {
+  AppRole,
+  ClassMembership,
+  ClassMembershipRole,
+  Profile,
+} from "./auth";
 export type { ClassFeedItem, ClassSummary } from "./classes";
 export type { HomeworkAssignment } from "./homework";
 export type { Announcement } from "./announcements";

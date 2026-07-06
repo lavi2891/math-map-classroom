@@ -1,13 +1,13 @@
 const REQUIRED_SUPABASE_ENV_VARS = [
   "NEXT_PUBLIC_SUPABASE_URL",
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
 ] as const;
 
 type SupabaseEnvVarName = (typeof REQUIRED_SUPABASE_ENV_VARS)[number];
 
 type SupabaseEnv = {
   url: string;
-  anonKey: string;
+  publishableKey: string;
 };
 
 export function getSupabaseEnv(): SupabaseEnv {
@@ -19,12 +19,12 @@ export function getSupabaseEnv(): SupabaseEnv {
     throw new Error(
       `Missing required Supabase environment variable(s): ${missingVars.join(
         ", ",
-      )}. Add them to .env.local. Do not use a service role key here.`,
+      )}. Add them to .env.local. Use the publishable key only; do not use a service role key or direct database connection string.`,
     );
   }
 
   return {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    publishableKey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
   };
 }

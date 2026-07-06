@@ -2,18 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import { ROUTES } from "@/lib/constants/routes";
-import type { Role } from "@/types";
+import type { AppRole } from "@/types";
 
 const ROLE_STORAGE_KEY = "mock-role";
 
-function roleHomePath(role: Role) {
+function roleHomePath(role: AppRole) {
   return role === "student" ? ROUTES.studentHome : ROUTES.teacherClasses;
 }
 
 export function RoleSwitch() {
   const router = useRouter();
 
-  function selectRole(role: Role) {
+  function selectRole(role: AppRole) {
     localStorage.setItem(ROLE_STORAGE_KEY, role);
     document.cookie = `${ROLE_STORAGE_KEY}=${role}; path=/; max-age=2592000; SameSite=Lax`;
     router.push(roleHomePath(role));

@@ -2,6 +2,7 @@ import type {
   Announcement,
   AppCard,
   ClassFeedItem,
+  ClassMembership,
   ClassSummary,
   HomeworkAssignment,
   KnowledgeDomain,
@@ -12,14 +13,36 @@ import type {
 export const mockStudentProfile: Profile = {
   id: "student-1",
   name: "נועה כהן",
-  role: "student",
 };
 
 export const mockTeacherProfile: Profile = {
   id: "teacher-1",
   name: "דניאל לוי",
-  role: "teacher",
 };
+
+export const mockStudentMemberships: ClassMembership[] = [
+  {
+    classId: "class-1",
+    userId: mockStudentProfile.id,
+    role: "student",
+    active: true,
+  },
+];
+
+export const mockTeacherMemberships: ClassMembership[] = [
+  {
+    classId: "class-1",
+    userId: mockTeacherProfile.id,
+    role: "owner",
+    active: true,
+  },
+  {
+    classId: "class-2",
+    userId: mockTeacherProfile.id,
+    role: "viewer",
+    active: true,
+  },
+];
 
 export const studentHomeCards: AppCard[] = [
   {
