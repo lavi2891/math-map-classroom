@@ -1,23 +1,38 @@
-import { RoleSwitch } from "@/components/app/RoleSwitch";
+import { LoginForm } from "@/components/app/LoginForm";
+import { NO_CLASS_MEMBERSHIP_ERROR } from "@/lib/auth/requireAuth";
 
-export default function LoginPage() {
+type LoginPageProps = {
+  searchParams?: Promise<{
+    error?: string;
+  }>;
+};
+
+function getInitialError(error?: string) {
+  if (error === "no-membership") {
+    return NO_CLASS_MEMBERSHIP_ERROR;
+  }
+
+  return undefined;
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+
   return (
     <main
       dir="rtl"
       className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-8"
     >
       <section className="rounded-lg border border-stone-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-semibold text-teal-700">
-          כניסה מדומה לפיתוח
-        </p>
+        <p className="text-sm font-semibold text-teal-700">כניסה למערכת</p>
         <h1 className="mt-2 text-3xl font-bold text-stone-950">
           מפת מתמטיקה כיתתית
         </h1>
         <p className="mt-3 text-sm leading-6 text-stone-600">
-          בחרו תפקיד כדי להיכנס למעטפת האפליקציה. הבחירה נשמרת מקומית בלבד,
-          בלי אימות אמיתי, מסד נתונים או חיבור ל-Supabase.
+          התחברו כמורה באמצעות אימייל וסיסמה, או כתלמיד/ה באמצעות קוד כיתה,
+          קוד תלמיד וסיסמה.
         </p>
-        <RoleSwitch />
+        <LoginForm initialError={getInitialError(params?.error)} />
       </section>
     </main>
   );

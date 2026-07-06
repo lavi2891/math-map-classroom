@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { BottomNav } from "@/components/app/BottomNav";
 import { APP_ROLE_LABELS } from "@/lib/constants/roles";
+import { ROUTES } from "@/lib/constants/routes";
 import type { AppRole, Profile } from "@/types";
 
 type AppShellProps = {
@@ -20,9 +22,12 @@ export function AppShell({ children, navigationRole, user }: AppShellProps) {
             </p>
             <h1 className="text-lg font-bold text-stone-950">{user.name}</h1>
           </div>
-          <span className="rounded-md bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-700">
-            Mock
-          </span>
+          <Link
+            className="rounded-md bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-700"
+            href={ROUTES.logout}
+          >
+            יציאה
+          </Link>
         </div>
       </header>
 

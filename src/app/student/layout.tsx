@@ -1,12 +1,16 @@
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/app/AppShell";
-import { getMockProfile } from "@/lib/auth/getCurrentProfile";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
-export default function StudentLayout({ children }: { children: ReactNode }) {
-  const { navigationRole, profile } = getMockProfile("student");
+export default async function StudentLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const { appMode, profile } = await requireAuth("student");
 
   return (
-    <AppShell navigationRole={navigationRole} user={profile}>
+    <AppShell navigationRole={appMode} user={profile}>
       {children}
     </AppShell>
   );

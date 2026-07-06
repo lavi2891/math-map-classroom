@@ -1,42 +1,26 @@
-import {
-  mockStudentMemberships,
-  mockStudentProfile,
-  mockTeacherMemberships,
-  mockTeacherProfile,
-} from "@/data/mock";
-import { STAFF_CLASS_ROLES } from "@/lib/constants/roles";
-import type { AppRole, ClassMembership, Profile } from "@/types";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { Profile } from "@/types";
 
-export function getNavigationRole(memberships: ClassMembership[]): AppRole {
-  const activeMemberships = memberships.filter((membership) => membership.active);
+type ProfileRow = {
+  id: string;
+  display_name: string | null;
+  username: string | null;
+};
 
-  if (
-    activeMemberships.some((membership) =>
-      STAFF_CLASS_ROLES.includes(membership.role),
-    )
-  ) {
-    return "teacher";
+export async function getCurrentProfile(userId: string): Promise<Profile | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, display_name, username")
+    .eq("id", userId)
+    .maybeSingle<ProfileRow>();
+
+  if (error || !data) {
+    return null;
   }
 
-  return "student";
-}
-
-export function getMockProfile(appRole: AppRole): {
-  profile: Profile;
-  memberships: ClassMembership[];
-  navigationRole: AppRole;
-} {
-  const profile = appRole === "student" ? mockStudentProfile : mockTeacherProfile;
-  const memberships =
-    appRole === "student" ? mockStudentMemberships : mockTeacherMemberships;
-
   return {
-    profile,
-    memberships,
-    navigationRole: getNavigationRole(memberships),
+    id: data.id,
+    name: data.display_name ?? data.username ?? "משתמש",
   };
-}
-
-export function getCurrentProfile() {
-  return getMockProfile("student");
 }
