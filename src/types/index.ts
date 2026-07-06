@@ -5,7 +5,11 @@ export type {
   Profile,
 } from "./auth";
 export type { ClassFeedItem, ClassSummary } from "./classes";
-export type { HomeworkAssignment } from "./homework";
+export type {
+  HomeworkAssignment,
+  HomeworkStatus,
+  UnderstandingLevel,
+} from "./homework";
 export type { Announcement } from "./announcements";
 export type {
   KnowledgeDomain,

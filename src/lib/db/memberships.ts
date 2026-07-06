@@ -48,6 +48,15 @@ export async function getCurrentUserStaffMemberships() {
   );
 }
 
+export async function getCurrentUserManageableMemberships() {
+  const memberships = await getCurrentUserMemberships();
+
+  return memberships.filter(
+    (membership) =>
+      membership.role === "owner" || membership.role === "teacher",
+  );
+}
+
 export async function getCurrentUserStudentMemberships() {
   const memberships = await getCurrentUserMemberships();
 

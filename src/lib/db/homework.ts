@@ -1,6 +1,12 @@
 import { getStudentClasses } from "@/lib/db/classes";
+import { getCurrentUserManageableMemberships } from "@/lib/db/memberships";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { AppCard, HomeworkAssignment } from "@/types";
+import type {
+  AppCard,
+  HomeworkAssignment,
+  HomeworkStatus,
+  UnderstandingLevel,
+} from "@/types";
 
 type HomeworkRow = {
   class_id: string;
@@ -10,6 +16,19 @@ type HomeworkRow = {
   id: string;
   title: string;
   visible_from: string;
+};
+
+type HomeworkSubmissionRow = {
+  homework_id: string;
+  status: HomeworkStatus;
+  understanding: UnderstandingLevel;
+};
+
+type HomeworkSummary = {
+  doneCount: number;
+  noUnderstandingCount: number;
+  partialUnderstandingCount: number;
+  submissionCount: number;
 };
 
 function getClassName(row: HomeworkRow) {
@@ -29,16 +48,74 @@ function formatDueDate(value: string | null) {
   }).format(new Date(value));
 }
 
-function toHomework(row: HomeworkRow): HomeworkAssignment {
+function emptySummary(): HomeworkSummary {
+  return {
+    doneCount: 0,
+    noUnderstandingCount: 0,
+    partialUnderstandingCount: 0,
+    submissionCount: 0,
+  };
+}
+
+async function getSubmissionSummaries(homeworkIds: string[]) {
+  const summaries = new Map<string, HomeworkSummary>();
+
+  if (homeworkIds.length === 0) {
+    return summaries;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("homework_submissions")
+    .select("homework_id, status, understanding")
+    .in("homework_id", homeworkIds);
+
+  if (error || !data) {
+    return summaries;
+  }
+
+  (data as HomeworkSubmissionRow[]).forEach((submission) => {
+    const summary = summaries.get(submission.homework_id) ?? emptySummary();
+
+    summary.submissionCount += 1;
+
+    if (submission.status === "done") {
+      summary.doneCount += 1;
+    }
+
+    if (submission.understanding === "partial") {
+      summary.partialUnderstandingCount += 1;
+    }
+
+    if (submission.understanding === "no") {
+      summary.noUnderstandingCount += 1;
+    }
+
+    summaries.set(submission.homework_id, summary);
+  });
+
+  return summaries;
+}
+
+function toHomework(
+  row: HomeworkRow,
+  summaries: Map<string, HomeworkSummary>,
+): HomeworkAssignment {
+  const summary = summaries.get(row.id) ?? emptySummary();
+
   return {
     classId: row.class_id,
     className: getClassName(row),
-    completedCount: 0,
+    completedCount: summary.doneCount,
     description: row.description,
+    doneCount: summary.doneCount,
     dueDate: formatDueDate(row.due_at),
     id: row.id,
+    noUnderstandingCount: summary.noUnderstandingCount,
+    partialUnderstandingCount: summary.partialUnderstandingCount,
+    submissionCount: summary.submissionCount,
     title: row.title,
-    totalCount: 0,
+    totalCount: summary.submissionCount,
   };
 }
 
@@ -65,10 +142,22 @@ export async function getHomeworkAssignments(classIds?: string[]) {
   }
 
   const now = Date.now();
+  const rows = (data as HomeworkRow[]).filter(
+    (assignment) => !assignment.due_at || Date.parse(assignment.due_at) >= now,
+  );
+  const summaries = await getSubmissionSummaries(
+    rows.map((assignment) => assignment.id),
+  );
 
-  return (data as HomeworkRow[])
-    .filter((assignment) => !assignment.due_at || Date.parse(assignment.due_at) >= now)
-    .map(toHomework);
+  return rows.map((row) => toHomework(row, summaries));
+}
+
+export async function getManageableHomeworkAssignments() {
+  const memberships = await getCurrentUserManageableMemberships();
+
+  return getHomeworkAssignments(
+    memberships.map((membership) => membership.classId),
+  );
 }
 
 export async function getOpenStudentHomework(limit = 5) {

@@ -1,17 +1,17 @@
 import { EmptyState } from "@/components/app/EmptyState";
 import { PageHeader } from "@/components/app/PageHeader";
 import { HomeworkCard } from "@/components/homework/HomeworkCard";
-import { getHomeworkAssignments } from "@/lib/db/homework";
+import { getManageableHomeworkAssignments } from "@/lib/db/homework";
 
 export default async function TeacherHomeworkPage() {
-  const assignments = await getHomeworkAssignments();
+  const assignments = await getManageableHomeworkAssignments();
 
   return (
     <div className="space-y-4">
       <PageHeader
         eyebrow="משימות"
         title="שיעורי בית"
-        description="משימות פתוחות, מועדי הגשה ומעקב השלמה."
+        description="משימות בכיתות שבהן יש לך הרשאת ניהול."
       />
 
       <div className="grid gap-3">
@@ -22,7 +22,7 @@ export default async function TeacherHomeworkPage() {
         ) : (
           <EmptyState
             title="אין שיעורי בית להצגה"
-            description="שיעורי בית לכיתות שלך יופיעו כאן."
+            description="שיעורי בית לכיתות שבהן יש לך הרשאת ניהול יופיעו כאן."
           />
         )}
       </div>
