@@ -7,7 +7,10 @@ import type { HomeworkStatus, UnderstandingLevel } from "@/types";
 
 export type HomeworkSubmissionActionState = {
   error?: string;
+  homeworkId?: string;
+  submissionId?: string;
   success: boolean;
+  userId?: string;
 };
 
 const HOMEWORK_STATUSES: HomeworkStatus[] = ["not_started", "started", "done"];
@@ -52,14 +55,14 @@ export async function submitHomework(
     };
   }
 
-  const success = await upsertHomeworkSubmission({
+  const result = await upsertHomeworkSubmission({
     homeworkId,
     note,
     status,
     understanding,
   });
 
-  if (!success) {
+  if (!result.success) {
     return {
       error: "לא הצלחנו לשמור את ההגשה.",
       success: false,
@@ -70,5 +73,10 @@ export async function submitHomework(
   revalidatePath(ROUTES.studentClass);
   revalidatePath(ROUTES.teacherHomework);
 
-  return { success: true };
+  return {
+    homeworkId,
+    submissionId: result.submissionId,
+    success: true,
+    userId: result.userId,
+  };
 }

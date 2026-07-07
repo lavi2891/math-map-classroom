@@ -256,12 +256,16 @@ Columns:
 Storage bucket convention:
 
 - Bucket: `homework-submissions`
-- Path: `{student_id}/{homework_id}/{filename}`
+- Bucket visibility: private, not public.
+- Path: `{student_id}/{homework_id}/{timestamp}-{safeFileName}`
 
-Current limitation:
+Current app usage:
 
-- Photo upload is not implemented in the homework workflow yet.
-- If `require_photo = true`, the student UI shows a notice that notebook photo upload will be added later.
+- Students can attach one or more notebook photos after their homework submission row is saved.
+- The browser uploads images to Supabase Storage with the authenticated user session.
+- The app inserts one `homework_files` metadata row per uploaded image.
+- Teachers view uploaded files from homework submission details.
+- Private files are opened through short-lived signed URLs; the bucket is not public.
 
 ### `knowledge_domains`
 

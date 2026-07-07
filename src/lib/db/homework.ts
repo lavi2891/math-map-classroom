@@ -8,6 +8,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type {
   AppCard,
   ClassSummary,
+  HomeworkFile,
   HomeworkAssignment,
   HomeworkStatus,
   HomeworkSubmissionDetail,
@@ -33,6 +34,13 @@ export type HomeworkSubmissionInput = {
   note?: string;
   status: HomeworkStatus;
   understanding: UnderstandingLevel;
+};
+
+export type HomeworkSubmissionResult = {
+  errorMessage?: string;
+  submissionId?: string;
+  success: boolean;
+  userId?: string;
 };
 
 export type HomeworkMutationResult = {
@@ -69,6 +77,15 @@ type HomeworkSubmissionRow = {
   student_id: string;
   submitted_at: string | null;
   understanding: UnderstandingLevel;
+};
+
+type HomeworkFileRow = {
+  file_name: string;
+  file_path: string;
+  id: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  submission_id: string;
 };
 
 type MembershipStudentRow = {
@@ -151,8 +168,12 @@ function toClassSummary(row: MembershipClassRow, studentCount = 0): ClassSummary
   ];
 }
 
-function toSubmissionDetail(row: HomeworkSubmissionRow): HomeworkSubmissionDetail {
+function toSubmissionDetail(
+  row: HomeworkSubmissionRow,
+  files: HomeworkFile[] = [],
+): HomeworkSubmissionDetail {
   return {
+    files,
     id: row.id,
     note: row.note ?? undefined,
     status: row.status,
@@ -301,13 +322,87 @@ async function getSubmissionsByHomeworkIds(homeworkIds: string[]) {
     return submissionsByHomework;
   }
 
-  (data as unknown as HomeworkSubmissionRow[]).forEach((row) => {
+  const rows = data as unknown as HomeworkSubmissionRow[];
+  const filesBySubmission = await getHomeworkFilesBySubmissionIds(
+    rows.map((row) => row.id),
+  );
+
+  rows.forEach((row) => {
     const submissions = submissionsByHomework.get(row.homework_id) ?? [];
-    submissions.push(toSubmissionDetail(row));
+    submissions.push(toSubmissionDetail(row, filesBySubmission.get(row.id) ?? []));
     submissionsByHomework.set(row.homework_id, submissions);
   });
 
   return submissionsByHomework;
+}
+
+async function getHomeworkFilesBySubmissionIds(submissionIds: string[]) {
+  const filesBySubmission = new Map<string, HomeworkFile[]>();
+
+  if (submissionIds.length === 0) {
+    return filesBySubmission;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("homework_files")
+    .select("id, submission_id, file_path, file_name, mime_type, size_bytes")
+    .in("submission_id", submissionIds)
+    .order("created_at", { ascending: true });
+
+  if (error || !data) {
+    return filesBySubmission;
+  }
+
+  const rows = data as HomeworkFileRow[];
+  const signedUrls = await createHomeworkFileSignedUrls(
+    rows.map((row) => row.file_path),
+  );
+
+  rows.forEach((row) => {
+    const files = filesBySubmission.get(row.submission_id) ?? [];
+    files.push({
+      fileName: row.file_name,
+      filePath: row.file_path,
+      id: row.id,
+      mimeType: row.mime_type ?? undefined,
+      signedUrl: signedUrls.get(row.file_path),
+      sizeBytes: row.size_bytes ?? undefined,
+    });
+    filesBySubmission.set(row.submission_id, files);
+  });
+
+  return filesBySubmission;
+}
+
+export async function createHomeworkFileSignedUrl(filePath: string) {
+  const signedUrls = await createHomeworkFileSignedUrls([filePath]);
+
+  return signedUrls.get(filePath);
+}
+
+export async function createHomeworkFileSignedUrls(filePaths: string[]) {
+  const signedUrls = new Map<string, string>();
+
+  if (filePaths.length === 0) {
+    return signedUrls;
+  }
+
+  const supabase = await createSupabaseServerClient();
+
+  await Promise.all(
+    filePaths.map(async (filePath) => {
+      const { data, error } = await supabase.storage
+        .from("homework-submissions")
+        .createSignedUrl(filePath, 60 * 10);
+
+      if (!error && data?.signedUrl) {
+        signedUrls.set(filePath, data.signedUrl);
+      }
+    }),
+  );
+
+  return signedUrls;
 }
 
 function mergeStudentSubmissionDetails(
@@ -625,25 +720,55 @@ export async function upsertHomeworkSubmission(input: HomeworkSubmissionInput) {
   const user = await getCurrentUser();
 
   if (!user) {
-    return false;
+    return { success: false };
   }
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.from("homework_submissions").upsert(
-    {
-      homework_id: input.homeworkId,
-      note: input.note || null,
-      status: input.status,
-      student_id: user.id,
-      submitted_at: new Date().toISOString(),
-      understanding: input.understanding,
-    },
-    {
-      onConflict: "homework_id,student_id",
-    },
-  );
+  const { data, error } = await supabase
+    .from("homework_submissions")
+    .upsert(
+      {
+        homework_id: input.homeworkId,
+        note: input.note || null,
+        status: input.status,
+        student_id: user.id,
+        submitted_at: new Date().toISOString(),
+        understanding: input.understanding,
+      },
+      {
+        onConflict: "homework_id,student_id",
+      },
+    )
+    .select("id, student_id")
+    .single();
 
-  return !error;
+  if (error || !data) {
+    if (error) {
+      console.error("upsertHomeworkSubmission failed", {
+        error: {
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          message: error.message,
+        },
+        payload: {
+          homework_id: input.homeworkId,
+          student_id: user.id,
+        },
+      });
+    }
+
+    return {
+      errorMessage: error?.message,
+      success: false,
+    };
+  }
+
+  return {
+    submissionId: data.id as string,
+    success: true,
+    userId: data.student_id as string,
+  };
 }
 
 export function getStudentPracticeCards(): AppCard[] {

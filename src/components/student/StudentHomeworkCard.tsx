@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Card } from "@/components/app/Card";
 import { StatusBadge } from "@/components/app/StatusBadge";
+import { HomeworkFileList } from "@/components/homework/HomeworkFileList";
 import { HomeworkSubmissionForm } from "@/components/homework/HomeworkSubmissionForm";
 import {
   getHomeworkStatusLabel,
@@ -19,6 +20,8 @@ export function StudentHomeworkCard({
 }) {
   const [isSubmissionOpen, setIsSubmissionOpen] = useState(false);
   const submission = assignment.submission;
+  const files = submission?.files ?? [];
+  const hasFiles = files.length > 0;
 
   return (
     <Card
@@ -46,7 +49,14 @@ export function StudentHomeworkCard({
               {getUnderstandingLabel(submission?.understanding)}
             </StatusBadge>
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-bold text-stone-700">צילום:</span>
+            <StatusBadge tone={hasFiles ? "success" : "neutral"}>
+              {hasFiles ? "צורף צילום" : "לא צורף צילום"}
+            </StatusBadge>
+          </div>
         </div>
+        <HomeworkFileList files={files} />
         {assignment.externalUrl ? (
           <a
             className="text-sm font-bold text-teal-700"
@@ -57,17 +67,14 @@ export function StudentHomeworkCard({
             קישור חיצוני
           </a>
         ) : null}
-        {assignment.requirePhoto ? (
-          <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
-            המורה ביקש צילום מחברת. העלאת צילום תתווסף בשלב הבא.
-          </p>
-        ) : null}
 
         {isSubmissionOpen ? (
           <div className="rounded-md border border-stone-200 bg-stone-50 p-3">
             <HomeworkSubmissionForm
+              existingFiles={files}
               homeworkId={assignment.id}
               onSuccess={() => setIsSubmissionOpen(false)}
+              requirePhoto={assignment.requirePhoto}
               submission={submission}
             />
           </div>

@@ -13,7 +13,17 @@ export type HomeworkSubmissionSummary = {
   totalStudentCount: number;
 };
 
+export type HomeworkFile = {
+  fileName: string;
+  filePath: string;
+  id: string;
+  mimeType?: string;
+  signedUrl?: string;
+  sizeBytes?: number;
+};
+
 export type HomeworkSubmissionDetail = {
+  files?: HomeworkFile[];
   id?: string;
   note?: string;
   status?: HomeworkStatus;

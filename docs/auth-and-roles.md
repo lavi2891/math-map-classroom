@@ -183,10 +183,6 @@ Managers can:
 
 Managers must be authorized through `class_memberships`. Do not use `profiles.role`, `classes.teacher_id`, `class_students`, a service role key, or any RLS bypass for homework management.
 
-Current homework limitations:
-
-- Photo upload is not implemented yet. The UI only displays a notice when `require_photo = true`.
-
 ### Who can submit homework?
 
 Students can view and submit only visible homework in classes where they have active `student` membership.
@@ -210,6 +206,14 @@ Students can update:
 - `understanding`
 - `note`
 - `submitted_at`
+
+Students can upload homework photos only for their own submission. Storage paths use:
+
+- `{student_id}/{homework_id}/{timestamp}-{safeFileName}`
+
+The `student_id` path segment must match `auth.uid()`. The app does not use a service role key or public bucket access for homework photos.
+
+Class staff can view uploaded homework files for submissions in their classes. Private storage objects are accessed through signed URLs when shown in the app.
 
 ### Is this user the class owner?
 

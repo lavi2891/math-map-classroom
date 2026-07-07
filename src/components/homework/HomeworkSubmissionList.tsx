@@ -1,3 +1,4 @@
+import { HomeworkFileList } from "@/components/homework/HomeworkFileList";
 import {
   homeworkStatusLabels,
   understandingLabels,
@@ -32,7 +33,7 @@ export function HomeworkSubmissionList({
             {submission.studentName}
           </p>
           {submission.id ? (
-            <div className="mt-1 grid gap-1 text-sm text-stone-600">
+            <div className="mt-1 grid gap-2 text-sm text-stone-600">
               <p>סטטוס: {homeworkStatusLabels[submission.status ?? "not_started"]}</p>
               <p>
                 הבנה: {understandingLabels[submission.understanding ?? "unknown"]}
@@ -41,6 +42,7 @@ export function HomeworkSubmissionList({
               {submission.submittedAt ? (
                 <p>זמן הגשה: {formatSubmittedAt(submission.submittedAt)}</p>
               ) : null}
+              <HomeworkFileList files={submission.files ?? []} />
             </div>
           ) : (
             <p className="mt-1 text-sm font-semibold text-stone-500">לא הגיש</p>
