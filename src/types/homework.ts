@@ -2,6 +2,12 @@ export type HomeworkStatus = "not_started" | "started" | "done";
 
 export type UnderstandingLevel = "good" | "partial" | "no" | "unknown";
 
+export type StudentHomeworkHistoryFilter =
+  | "all"
+  | "open"
+  | "overdue"
+  | "submitted";
+
 export type HomeworkSubmissionSummary = {
   doneCount: number;
   goodUnderstandingCount: number;
@@ -25,6 +31,7 @@ export type HomeworkFile = {
 export type HomeworkSubmissionDetail = {
   files?: HomeworkFile[];
   id?: string;
+  isLate?: boolean;
   note?: string;
   status?: HomeworkStatus;
   studentId: string;
@@ -35,7 +42,9 @@ export type HomeworkSubmissionDetail = {
 
 export type HomeworkAssignment = {
   id: string;
+  allowLateSubmission: boolean;
   allowExternalUrl: boolean;
+  canSubmit: boolean;
   classId: string;
   className?: string;
   description: string;
@@ -45,6 +54,8 @@ export type HomeworkAssignment = {
   externalUrl?: string;
   isHidden: boolean;
   isOverdue: boolean;
+  lateSubmissionUntil?: string;
+  lateSubmissionUntilDate?: string;
   requirePhoto: boolean;
   requireStatus: boolean;
   requireUnderstanding: boolean;

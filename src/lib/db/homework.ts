@@ -14,14 +14,17 @@ import type {
   HomeworkSubmissionDetail,
   HomeworkSubmissionSummary,
   UnderstandingLevel,
+  StudentHomeworkHistoryFilter,
 } from "@/types";
 
 export type HomeworkAssignmentInput = {
+  allowLateSubmission: boolean;
   allowExternalUrl: boolean;
   classId: string;
   description: string;
   dueAt?: string;
   externalUrl?: string;
+  lateSubmissionUntil?: string;
   requirePhoto: boolean;
   requireStatus: boolean;
   requireUnderstanding: boolean;
@@ -50,6 +53,7 @@ export type HomeworkMutationResult = {
 };
 
 type HomeworkRow = {
+  allow_late_submission: boolean | null;
   allow_external_url: boolean | null;
   class_id: string;
   classes: { name: string } | { name: string }[] | null;
@@ -59,6 +63,7 @@ type HomeworkRow = {
   external_url: string | null;
   id: string;
   is_hidden: boolean | null;
+  late_submission_until: string | null;
   require_photo: boolean | null;
   require_status: boolean | null;
   require_understanding: boolean | null;
@@ -141,6 +146,8 @@ const LAST_REQUIRED_PHOTO_DELETE_ERROR =
   "אי אפשר להסיר את הצילום האחרון כשההגשה מסומנת כסיימתי.";
 const PARTIAL_HOMEWORK_FILE_DELETE_ERROR =
   "הצילום נמחק מהאחסון אבל לא הצלחנו לעדכן את ההגשה. נסה לרענן.";
+const HOMEWORK_SUBMISSION_CLOSED_ERROR =
+  "עבר תאריך ההגשה ולא ניתן להגיש.";
 
 function getJoined<T>(value: T | T[] | null) {
   return Array.isArray(value) ? value[0] : value;
@@ -162,6 +169,24 @@ function isStorageObjectMissingError(error: { message?: string } | null) {
 
 function getClassName(row: HomeworkRow) {
   return getJoined(row.classes)?.name;
+}
+
+function canSubmitHomework(
+  dueAt: string | undefined,
+  allowLateSubmission: boolean,
+  lateSubmissionUntil: string | undefined,
+) {
+  const now = Date.now();
+
+  if (!dueAt || now <= Date.parse(dueAt)) {
+    return true;
+  }
+
+  if (!allowLateSubmission) {
+    return false;
+  }
+
+  return !lateSubmissionUntil || now <= Date.parse(lateSubmissionUntil);
 }
 
 function getStudentName(row: MembershipStudentRow | HomeworkSubmissionRow) {
@@ -270,9 +295,30 @@ function toHomeworkAssignment(
 ): HomeworkAssignment {
   const totalStudentCount = submissionDetails.length;
   const dueAt = row.due_at ?? undefined;
+  const allowLateSubmission = row.allow_late_submission ?? true;
+  const lateSubmissionUntil = row.late_submission_until ?? undefined;
+  const details = dueAt
+    ? submissionDetails.map((detail) => ({
+        ...detail,
+        isLate: detail.submittedAt
+          ? Date.parse(detail.submittedAt) > Date.parse(dueAt)
+          : false,
+      }))
+    : submissionDetails;
+  const studentSubmission =
+    dueAt && submission
+      ? {
+          ...submission,
+          isLate: submission.submittedAt
+            ? Date.parse(submission.submittedAt) > Date.parse(dueAt)
+            : false,
+        }
+      : submission;
 
   return {
+    allowLateSubmission,
     allowExternalUrl: row.allow_external_url ?? false,
+    canSubmit: canSubmitHomework(dueAt, allowLateSubmission, lateSubmissionUntil),
     classId: row.class_id,
     className: getClassName(row),
     description: row.description,
@@ -283,12 +329,16 @@ function toHomeworkAssignment(
     id: row.id,
     isHidden: row.is_hidden ?? false,
     isOverdue: dueAt ? Date.parse(dueAt) < Date.now() : false,
+    lateSubmissionUntil,
+    lateSubmissionUntilDate: lateSubmissionUntil
+      ? formatDateTime(lateSubmissionUntil)
+      : undefined,
     requirePhoto: row.require_photo ?? false,
     requireStatus: row.require_status ?? true,
     requireUnderstanding: row.require_understanding ?? true,
-    submission,
-    submissionDetails,
-    submissionSummary: summarize(submissionDetails, totalStudentCount),
+    submission: studentSubmission,
+    submissionDetails: details,
+    submissionSummary: summarize(details, totalStudentCount),
     title: row.title,
     visibleFrom: row.visible_from,
   };
@@ -614,7 +664,11 @@ function mergeStudentSubmissionDetails(
   }));
 }
 
-async function getHomeworkRows(classIds: string[], visibleOnly: boolean) {
+async function getHomeworkRows(
+  classIds: string[],
+  visibleOnly: boolean,
+  limit: number,
+) {
   if (classIds.length === 0) {
     return [];
   }
@@ -623,7 +677,7 @@ async function getHomeworkRows(classIds: string[], visibleOnly: boolean) {
   let query = supabase
     .from("homework_assignments")
     .select(
-      "id, class_id, title, description, visible_from, due_at, require_status, require_understanding, require_photo, allow_external_url, external_url, is_hidden, deleted_at, classes(name)",
+      "id, class_id, title, description, visible_from, due_at, allow_late_submission, late_submission_until, require_status, require_understanding, require_photo, allow_external_url, external_url, is_hidden, deleted_at, classes(name)",
     )
     .in("class_id", classIds)
     .is("deleted_at", null)
@@ -635,7 +689,7 @@ async function getHomeworkRows(classIds: string[], visibleOnly: boolean) {
       .lte("visible_from", new Date().toISOString());
   }
 
-  const { data, error } = await query.limit(100);
+  const { data, error } = await query.limit(limit);
 
   if (error || !data) {
     return [];
@@ -674,11 +728,43 @@ export async function getManageableHomeworkClasses() {
   });
 }
 
-export async function getTeacherHomeworkAssignments() {
+function isOpenStudentHomework(assignment: HomeworkAssignment) {
+  const fileCount = assignment.submission?.files?.length ?? 0;
+
+  return (
+    !assignment.submission ||
+    assignment.submission.status !== "done" ||
+    (assignment.requirePhoto && fileCount === 0)
+  );
+}
+
+function filterStudentHomework(
+  assignments: HomeworkAssignment[],
+  filter: StudentHomeworkHistoryFilter,
+) {
+  if (filter === "all") {
+    return assignments;
+  }
+
+  if (filter === "open") {
+    return assignments.filter(isOpenStudentHomework);
+  }
+
+  if (filter === "overdue") {
+    return assignments.filter((assignment) => assignment.isOverdue);
+  }
+
+  return assignments.filter(
+    (assignment) => assignment.submission?.status === "done",
+  );
+}
+
+export async function getTeacherHomeworkAssignments(limit = 20) {
   const classes = await getManageableHomeworkClasses();
   const rows = await getHomeworkRows(
     classes.map((classSummary) => classSummary.id),
     false,
+    limit,
   );
   const [studentsByClass, submissionsByHomework] = await Promise.all([
     getActiveStudentsByClassIds([...new Set(rows.map((row) => row.class_id))]),
@@ -695,13 +781,16 @@ export async function getTeacherHomeworkAssignments() {
   });
 }
 
-export async function getStudentHomeworkAssignments(classIds?: string[]) {
+export async function getStudentHomeworkAssignments(
+  classIds?: string[],
+  limit = 10,
+) {
   const memberships = await getCurrentUserStudentMemberships();
   const membershipClassIds = memberships.map((membership) => membership.classId);
   const allowedClassIds = classIds
     ? classIds.filter((classId) => membershipClassIds.includes(classId))
     : membershipClassIds;
-  const rows = await getHomeworkRows(allowedClassIds, true);
+  const rows = await getHomeworkRows(allowedClassIds, true, limit);
   const submissionsByHomework = await getSubmissionsByHomeworkIds(
     rows.map((row) => row.id),
   );
@@ -722,13 +811,27 @@ export async function getManageableHomeworkAssignments() {
   return getTeacherHomeworkAssignments();
 }
 
-export async function getOpenStudentHomework(limit = 5) {
+export async function getOpenStudentHomework(limit = 10) {
   const classes = await getStudentClasses();
   const homework = await getStudentHomeworkAssignments(
     classes.map((classSummary) => classSummary.id),
+    Math.max(limit * 3, limit),
   );
 
-  return homework.slice(0, limit);
+  return filterStudentHomework(homework, "open").slice(0, limit);
+}
+
+export async function getStudentHomeworkHistory(
+  filter: StudentHomeworkHistoryFilter = "open",
+  limit = 30,
+  classIds?: string[],
+) {
+  const homework = await getStudentHomeworkAssignments(
+    classIds,
+    filter === "open" ? Math.max(limit * 3, limit) : limit,
+  );
+
+  return filterStudentHomework(homework, filter).slice(0, limit);
 }
 
 export async function createHomeworkAssignment(input: HomeworkAssignmentInput) {
@@ -748,12 +851,16 @@ export async function createHomeworkAssignment(input: HomeworkAssignmentInput) {
 
   const supabase = await createSupabaseServerClient();
   const insertPayload = {
+    allow_late_submission: input.allowLateSubmission,
     allow_external_url: input.allowExternalUrl,
     class_id: input.classId,
     created_by: user.id,
     description: input.description,
     due_at: input.dueAt || null,
     external_url: input.externalUrl || null,
+    late_submission_until: input.allowLateSubmission
+      ? input.lateSubmissionUntil || null
+      : null,
     require_photo: input.requirePhoto,
     require_status: input.requireStatus,
     require_understanding: input.requireUnderstanding,
@@ -775,10 +882,12 @@ export async function createHomeworkAssignment(input: HomeworkAssignmentInput) {
       },
       payload: {
         allow_external_url: insertPayload.allow_external_url,
+        allow_late_submission: insertPayload.allow_late_submission,
         class_id: insertPayload.class_id,
         created_by: insertPayload.created_by,
         due_at: insertPayload.due_at,
         has_external_url: Boolean(insertPayload.external_url),
+        late_submission_until: insertPayload.late_submission_until,
         require_photo: insertPayload.require_photo,
         require_status: insertPayload.require_status,
         require_understanding: insertPayload.require_understanding,
@@ -819,11 +928,15 @@ export async function updateHomeworkAssignment(
   const { error } = await supabase
     .from("homework_assignments")
     .update({
+      allow_late_submission: input.allowLateSubmission,
       allow_external_url: input.allowExternalUrl,
       class_id: input.classId,
       description: input.description,
       due_at: input.dueAt || null,
       external_url: input.externalUrl || null,
+      late_submission_until: input.allowLateSubmission
+        ? input.lateSubmissionUntil || null
+        : null,
       require_photo: input.requirePhoto,
       require_status: input.requireStatus,
       require_understanding: input.requireUnderstanding,
@@ -918,36 +1031,48 @@ export async function upsertHomeworkSubmission(input: HomeworkSubmissionInput) {
   }
 
   const supabase = await createSupabaseServerClient();
+  const { data: assignment, error: assignmentError } = await supabase
+    .from("homework_assignments")
+    .select("id, due_at, allow_late_submission, late_submission_until, require_photo")
+    .eq("id", input.homeworkId)
+    .maybeSingle();
 
-  if (input.status === "done") {
-    const { data: assignment, error: assignmentError } = await supabase
-      .from("homework_assignments")
-      .select("id, require_photo")
-      .eq("id", input.homeworkId)
-      .maybeSingle();
-
-    if (assignmentError || !assignment) {
-      if (assignmentError) {
-        console.error("upsertHomeworkSubmission assignment check failed", {
-          error: {
-            code: assignmentError.code,
-            details: assignmentError.details,
-            hint: assignmentError.hint,
-            message: assignmentError.message,
-          },
-          payload: {
-            homework_id: input.homeworkId,
-            student_id: user.id,
-          },
-        });
-      }
-
-      return {
-        errorMessage: assignmentError?.message,
-        success: false,
-      };
+  if (assignmentError || !assignment) {
+    if (assignmentError) {
+      console.error("upsertHomeworkSubmission assignment check failed", {
+        error: {
+          code: assignmentError.code,
+          details: assignmentError.details,
+          hint: assignmentError.hint,
+          message: assignmentError.message,
+        },
+        payload: {
+          homework_id: input.homeworkId,
+          student_id: user.id,
+        },
+      });
     }
 
+    return {
+      errorMessage: assignmentError?.message,
+      success: false,
+    };
+  }
+
+  if (
+    !canSubmitHomework(
+      assignment.due_at ?? undefined,
+      assignment.allow_late_submission ?? true,
+      assignment.late_submission_until ?? undefined,
+    )
+  ) {
+    return {
+      errorMessage: HOMEWORK_SUBMISSION_CLOSED_ERROR,
+      success: false,
+    };
+  }
+
+  if (input.status === "done") {
     if (assignment.require_photo && !input.hasSelectedPhotoUpload) {
       const { data: existingSubmission, error: submissionError } = await supabase
         .from("homework_submissions")

@@ -42,11 +42,13 @@ function getHomeworkInput(formData: FormData): HomeworkAssignmentInput | null {
   }
 
   return {
+    allowLateSubmission: getBoolean(formData, "allowLateSubmission"),
     allowExternalUrl: Boolean(externalUrl) || getBoolean(formData, "allowExternalUrl"),
     classId,
     description,
     dueAt: getDateTime(formData, "dueAt"),
     externalUrl: externalUrl || undefined,
+    lateSubmissionUntil: getDateTime(formData, "lateSubmissionUntil"),
     requirePhoto: getBoolean(formData, "requirePhoto"),
     requireStatus: getBoolean(formData, "requireStatus"),
     requireUnderstanding: getBoolean(formData, "requireUnderstanding"),

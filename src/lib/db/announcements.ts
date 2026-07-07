@@ -302,7 +302,11 @@ async function getReadDetailsByAnnouncementRows(rows: AnnouncementRow[]) {
   return detailsByAnnouncement;
 }
 
-async function getAnnouncementRows(classIds: string[], studentVisibleOnly: boolean) {
+async function getAnnouncementRows(
+  classIds: string[],
+  studentVisibleOnly: boolean,
+  limit: number,
+) {
   if (classIds.length === 0) {
     return [];
   }
@@ -328,7 +332,7 @@ async function getAnnouncementRows(classIds: string[], studentVisibleOnly: boole
     query = query.is("deleted_at", null);
   }
 
-  const { data, error } = await query.limit(100);
+  const { data, error } = await query.limit(limit);
 
   if (error || !data) {
     return [];
@@ -387,11 +391,12 @@ export async function getManageableAnnouncementClasses() {
   });
 }
 
-export async function getManageableAnnouncements() {
+export async function getManageableAnnouncements(limit = 20) {
   const classes = await getManageableAnnouncementClasses();
   const rows = await getAnnouncementRows(
     classes.map((classSummary) => classSummary.id),
     false,
+    limit,
   );
   const announcementIds = rows.map((row) => row.id);
   const [linksByAnnouncement, readDetailsByAnnouncement] = await Promise.all([
@@ -409,13 +414,13 @@ export async function getManageableAnnouncements() {
   );
 }
 
-export async function getStudentAnnouncements(classIds?: string[]) {
+export async function getStudentAnnouncements(classIds?: string[], limit = 10) {
   const memberships = await getCurrentUserStudentMemberships();
   const membershipClassIds = memberships.map((membership) => membership.classId);
   const allowedClassIds = classIds
     ? classIds.filter((classId) => membershipClassIds.includes(classId))
     : membershipClassIds;
-  const rows = await getAnnouncementRows(allowedClassIds, true);
+  const rows = await getAnnouncementRows(allowedClassIds, true, limit);
   const announcementIds = rows.map((row) => row.id);
   const [linksByAnnouncement, readsByAnnouncement] = await Promise.all([
     getLinksByAnnouncementIds(announcementIds),
@@ -431,13 +436,14 @@ export async function getStudentAnnouncements(classIds?: string[]) {
   );
 }
 
-export async function getLatestStudentAnnouncements(limit = 5) {
+export async function getLatestStudentAnnouncements(limit = 10) {
   const classes = await getStudentClasses();
   const announcements = await getStudentAnnouncements(
     classes.map((classSummary) => classSummary.id),
+    limit,
   );
 
-  return announcements.slice(0, limit);
+  return announcements;
 }
 
 export async function createAnnouncement(input: AnnouncementInput) {

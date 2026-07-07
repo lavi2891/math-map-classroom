@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { formatDateTimeInput } from "@/components/homework/homeworkLabels";
 import type { HomeworkActionState } from "@/app/teacher/homework/actions";
 import type { ClassSummary, HomeworkAssignment } from "@/types";
@@ -27,6 +27,9 @@ export function HomeworkForm({
   const [state, formAction, isPending] = useActionState(action, {
     success: false,
   });
+  const [allowLateSubmission, setAllowLateSubmission] = useState(
+    assignment?.allowLateSubmission ?? true,
+  );
 
   useEffect(() => {
     if (state.success) {
@@ -97,6 +100,30 @@ export function HomeworkForm({
             type="datetime-local"
           />
         </label>
+      </div>
+
+      <div className="grid min-w-0 gap-2 rounded-md border border-stone-200 bg-stone-50 p-3 text-sm font-semibold text-stone-700">
+        <label className="flex min-h-11 items-center gap-2">
+          <input
+            className="size-4"
+            checked={allowLateSubmission}
+            name="allowLateSubmission"
+            onChange={(event) => setAllowLateSubmission(event.target.checked)}
+            type="checkbox"
+          />
+          אפשר הגשה באיחור
+        </label>
+        {allowLateSubmission ? (
+          <label className="grid min-w-0 gap-1">
+            הגשה באיחור עד
+            <input
+              className={controlClass}
+              defaultValue={formatDateTimeInput(assignment?.lateSubmissionUntil)}
+              name="lateSubmissionUntil"
+              type="datetime-local"
+            />
+          </label>
+        ) : null}
       </div>
 
       <div className="grid min-w-0 gap-2 rounded-md border border-stone-200 bg-stone-50 p-3 text-sm font-semibold text-stone-700">

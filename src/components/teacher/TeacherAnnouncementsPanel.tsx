@@ -139,7 +139,8 @@ export function TeacherAnnouncementsPanel({
 
       <div className="grid gap-3">
         {announcements.length > 0 ? (
-          announcements.map((announcement) => {
+          <>
+            {announcements.map((announcement) => {
             const isEditing = editingAnnouncementId === announcement.id;
 
             return isEditing ? (
@@ -191,7 +192,18 @@ export function TeacherAnnouncementsPanel({
                 </Card>
               </div>
             );
-          })
+            })}
+            {/* TODO: implement pagination for teacher announcements. */}
+            {announcements.length >= 20 ? (
+              <button
+                className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-stone-500 sm:w-fit"
+                disabled
+                type="button"
+              >
+                טען עוד
+              </button>
+            ) : null}
+          </>
         ) : (
           <EmptyState
             title="אין הודעות להצגה"

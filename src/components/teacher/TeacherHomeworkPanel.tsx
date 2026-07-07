@@ -66,40 +66,52 @@ export function TeacherHomeworkPanel({
 
       <div className="grid gap-3">
         {assignments.length > 0 ? (
-          assignments.map((assignment) => {
-            const isEditing = editingAssignmentId === assignment.id;
+          <>
+            {assignments.map((assignment) => {
+              const isEditing = editingAssignmentId === assignment.id;
 
-            return (
-              <div className="grid gap-3" key={assignment.id}>
-                {isEditing ? (
-                  <Card title="עריכת שיעורי בית">
-                    <HomeworkForm
-                      action={updateHomeworkAction}
-                      assignment={assignment}
-                      classes={classes}
-                      onCancel={() => setEditingAssignmentId(null)}
-                    />
-                  </Card>
-                ) : (
-                  <div className="relative">
-                    <CardActionButtons
-                      hidden={assignment.isHidden}
-                      hideAction={hideHomeworkAction}
-                      idFieldName="homeworkId"
-                      idValue={assignment.id}
-                      onDeleteRequest={() => setDeleteAssignmentId(assignment.id)}
-                      onEdit={() => {
-                        setIsCreateOpen(false);
-                        setEditingAssignmentId(assignment.id);
-                      }}
-                      unhideAction={unhideHomeworkAction}
-                    />
-                    <HomeworkCard assignment={assignment} className="pt-16" />
-                  </div>
-                )}
-              </div>
-            );
-          })
+              return (
+                <div className="grid gap-3" key={assignment.id}>
+                  {isEditing ? (
+                    <Card title="עריכת שיעורי בית">
+                      <HomeworkForm
+                        action={updateHomeworkAction}
+                        assignment={assignment}
+                        classes={classes}
+                        onCancel={() => setEditingAssignmentId(null)}
+                      />
+                    </Card>
+                  ) : (
+                    <div className="relative">
+                      <CardActionButtons
+                        hidden={assignment.isHidden}
+                        hideAction={hideHomeworkAction}
+                        idFieldName="homeworkId"
+                        idValue={assignment.id}
+                        onDeleteRequest={() => setDeleteAssignmentId(assignment.id)}
+                        onEdit={() => {
+                          setIsCreateOpen(false);
+                          setEditingAssignmentId(assignment.id);
+                        }}
+                        unhideAction={unhideHomeworkAction}
+                      />
+                      <HomeworkCard assignment={assignment} className="pt-16" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {/* TODO: implement pagination for teacher homework. */}
+            {assignments.length >= 20 ? (
+              <button
+                className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-stone-500 sm:w-fit"
+                disabled
+                type="button"
+              >
+                טען עוד
+              </button>
+            ) : null}
+          </>
         ) : (
           <EmptyState
             title="עדיין אין שיעורי בית."

@@ -23,6 +23,14 @@ export function HomeworkCard({ assignment, className }: HomeworkCardProps) {
       <div className="grid gap-3">
         <div className="grid gap-1 text-sm text-stone-600">
           <p>תאריך יעד: {assignment.dueDate ?? "אין תאריך יעד"}</p>
+          <p>
+            הגשה באיחור:{" "}
+            {assignment.allowLateSubmission
+              ? assignment.lateSubmissionUntilDate
+                ? `אפשר עד ${assignment.lateSubmissionUntilDate}`
+                : "אפשר"
+              : "לא"}
+          </p>
           <p>סטטוס: {getHomeworkVisibilityLabel(assignment)}</p>
           <p>דורש צילום: {assignment.requirePhoto ? "כן" : "לא"}</p>
           <p>מספר הגשות: {summary.submittedCount}</p>

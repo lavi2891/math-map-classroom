@@ -42,6 +42,9 @@ export function HomeworkSubmissionList({
               {submission.submittedAt ? (
                 <p>זמן הגשה: {formatSubmittedAt(submission.submittedAt)}</p>
               ) : null}
+              {submission.isLate ? (
+                <p className="font-bold text-amber-700">הוגש באיחור</p>
+              ) : null}
               <HomeworkFileList files={submission.files ?? []} />
             </div>
           ) : (

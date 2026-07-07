@@ -60,7 +60,17 @@ export function StudentHomeworkCard({
         <div className="grid gap-2 text-sm text-stone-600">
           <p>תאריך יעד: {assignment.dueDate ?? "אין תאריך יעד"}</p>
           {assignment.isOverdue ? (
-            <p className="font-bold text-red-700">עבר תאריך ההגשה</p>
+            <p
+              className={
+                assignment.canSubmit
+                  ? "font-bold text-amber-700"
+                  : "font-bold text-red-700"
+              }
+            >
+              {assignment.canSubmit
+                ? "עבר תאריך ההגשה · אפשר להגיש באיחור"
+                : "עבר תאריך ההגשה · לא ניתן להגיש"}
+            </p>
           ) : null}
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-bold text-stone-700">סטטוס ההגשה שלי:</span>
@@ -101,7 +111,7 @@ export function StudentHomeworkCard({
           </a>
         ) : null}
 
-        {isSubmissionOpen ? (
+        {isSubmissionOpen && assignment.canSubmit ? (
           <div className="rounded-md border border-stone-200 bg-stone-50 p-3">
             <HomeworkSubmissionForm
               existingFiles={visibleFiles}
@@ -124,11 +134,16 @@ export function StudentHomeworkCard({
           </div>
         ) : (
           <button
-            className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-teal-700 transition hover:bg-stone-50 sm:w-fit"
+            className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-teal-700 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-fit"
+            disabled={!assignment.canSubmit}
             onClick={() => setIsSubmissionOpen(true)}
             type="button"
           >
-            {submission?.id ? "עדכן הגשה" : "פתח הגשה"}
+            {!assignment.canSubmit
+              ? "לא ניתן להגיש"
+              : submission?.id
+                ? "עדכן הגשה"
+                : "פתח הגשה"}
           </button>
         )}
       </div>

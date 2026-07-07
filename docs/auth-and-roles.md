@@ -179,6 +179,7 @@ Managers can:
 - Edit title, description, visibility date, due date, reporting requirements, photo requirement flag, and external URL.
 - Hide and unhide homework through `is_hidden`.
 - Soft delete homework by setting `deleted_at`.
+- Configure deadline behavior with `due_at`, `allow_late_submission`, and `late_submission_until`.
 - View submission summaries and per-student submission details.
 
 Managers must be authorized through `class_memberships`. Do not use `profiles.role`, `classes.teacher_id`, `class_students`, a service role key, or any RLS bypass for homework management.
@@ -193,7 +194,14 @@ Visible homework means:
 - `is_hidden = false`
 - `visible_from <= now()`
 
-`due_at` does not currently block visibility or submission. Overdue homework remains visible and can still be submitted or updated when it otherwise matches the visibility rules.
+`due_at` does not block visibility. Submission/update is allowed when:
+
+- `due_at is null`
+- or `now() <= due_at`
+- or `allow_late_submission = true` and `late_submission_until is null`
+- or `allow_late_submission = true` and `now() <= late_submission_until`
+
+When the deadline has passed and late submission is not allowed anymore, students can still view the homework but cannot open or update the submission form.
 
 The app upserts `homework_submissions` by:
 
