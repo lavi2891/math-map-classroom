@@ -1,19 +1,21 @@
-const REQUIRED_SUPABASE_ENV_VARS = [
-  "NEXT_PUBLIC_SUPABASE_URL",
-  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-] as const;
-
-type SupabaseEnvVarName = (typeof REQUIRED_SUPABASE_ENV_VARS)[number];
-
 type SupabaseEnv = {
   supabaseUrl: string;
   supabasePublishableKey: string;
 };
 
 export function getSupabaseEnv(): SupabaseEnv {
-  const missingVars = REQUIRED_SUPABASE_ENV_VARS.filter(
-    (name: SupabaseEnvVarName) => !process.env[name],
-  );
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabasePublishableKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const missingVars: string[] = [];
+
+  if (!supabaseUrl) {
+    missingVars.push("NEXT_PUBLIC_SUPABASE_URL");
+  }
+
+  if (!supabasePublishableKey) {
+    missingVars.push("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+  }
 
   if (missingVars.length > 0) {
     throw new Error(
@@ -23,8 +25,12 @@ export function getSupabaseEnv(): SupabaseEnv {
     );
   }
 
+  if (!supabaseUrl || !supabasePublishableKey) {
+    throw new Error("Missing required Supabase environment variable(s).");
+  }
+
   return {
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    supabasePublishableKey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    supabaseUrl,
+    supabasePublishableKey,
   };
 }
