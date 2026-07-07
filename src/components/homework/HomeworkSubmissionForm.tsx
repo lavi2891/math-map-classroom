@@ -135,12 +135,19 @@ export function HomeworkSubmissionForm({
           .from("homework-submissions")
           .createSignedUrl(filePath, 60 * 10);
 
+        if (!signedUrlData?.signedUrl) {
+          setFileError("הצילום נשמר, אבל לא הצלחנו להציג אותו כרגע.");
+          setIsUploading(false);
+          handledSubmissionId.current = undefined;
+          return;
+        }
+
         uploadedFiles.push({
           fileName: metadata.file_name,
           filePath: metadata.file_path,
           id: metadata.id,
           mimeType: metadata.mime_type ?? undefined,
-          signedUrl: signedUrlData?.signedUrl,
+          signedUrl: signedUrlData.signedUrl,
           sizeBytes: metadata.size_bytes ?? undefined,
         });
       }

@@ -11,6 +11,12 @@ type HomeworkFileListProps = {
   removable?: boolean;
 };
 
+function hasSignedUrl(file: HomeworkFile): file is HomeworkFile & {
+  signedUrl: string;
+} {
+  return Boolean(file.signedUrl);
+}
+
 export function HomeworkFileList({
   files = [],
   onFileDeleted,
@@ -20,8 +26,9 @@ export function HomeworkFileList({
   const [error, setError] = useState<string | undefined>();
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const visibleFiles = files.filter(hasSignedUrl);
 
-  if (files.length === 0) {
+  if (visibleFiles.length === 0) {
     return null;
   }
 
@@ -53,7 +60,7 @@ export function HomeworkFileList({
       <p className="text-sm font-bold text-stone-700">צילומים שצורפו</p>
       {error ? <p className="text-sm font-bold text-red-700">{error}</p> : null}
       <div className="grid gap-2 sm:grid-cols-2">
-        {files.map((file) => (
+        {visibleFiles.map((file) => (
           <div
             className="relative grid gap-2 rounded-md border border-stone-200 bg-stone-50 p-2"
             key={file.id}
@@ -64,7 +71,7 @@ export function HomeworkFileList({
               rel="noreferrer"
               target="_blank"
             >
-              {file.signedUrl && file.mimeType?.startsWith("image/") ? (
+              {file.mimeType?.startsWith("image/") ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   alt={file.fileName}

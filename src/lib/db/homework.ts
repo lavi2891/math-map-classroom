@@ -139,9 +139,25 @@ const PHOTO_REQUIRED_DONE_ERROR =
   "כדי לסמן שסיימת, צריך לצרף צילום מחברת.";
 const LAST_REQUIRED_PHOTO_DELETE_ERROR =
   "אי אפשר להסיר את הצילום האחרון כשההגשה מסומנת כסיימתי.";
+const PARTIAL_HOMEWORK_FILE_DELETE_ERROR =
+  "הצילום נמחק מהאחסון אבל לא הצלחנו לעדכן את ההגשה. נסה לרענן.";
 
 function getJoined<T>(value: T | T[] | null) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function isStorageObjectMissingError(error: { message?: string } | null) {
+  if (!error?.message) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+
+  return (
+    message.includes("not found") ||
+    message.includes("does not exist") ||
+    message.includes("no such")
+  );
 }
 
 function getClassName(row: HomeworkRow) {
@@ -389,13 +405,27 @@ async function getHomeworkFilesBySubmissionIds(submissionIds: string[]) {
   );
 
   rows.forEach((row) => {
+    const signedUrl = signedUrls.get(row.file_path);
+
+    if (!signedUrl) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("Skipping inaccessible homework file", {
+          file_id: row.id,
+          file_path: row.file_path,
+          submission_id: row.submission_id,
+        });
+      }
+
+      return;
+    }
+
     const files = filesBySubmission.get(row.submission_id) ?? [];
     files.push({
       fileName: row.file_name,
       filePath: row.file_path,
       id: row.id,
       mimeType: row.mime_type ?? undefined,
-      signedUrl: signedUrls.get(row.file_path),
+      signedUrl,
       sizeBytes: row.size_bytes ?? undefined,
     });
     filesBySubmission.set(row.submission_id, files);
@@ -521,7 +551,7 @@ export async function deleteHomeworkFile(fileId: string) {
     .from("homework-submissions")
     .remove([row.file_path]);
 
-  if (storageError) {
+  if (storageError && !isStorageObjectMissingError(storageError)) {
     console.error("deleteHomeworkFile storage delete failed", {
       error: {
         message: storageError.message,
@@ -532,6 +562,14 @@ export async function deleteHomeworkFile(fileId: string) {
     });
 
     return { success: false };
+  }
+
+  if (storageError && process.env.NODE_ENV === "development") {
+    console.warn("Deleting orphaned homework file metadata", {
+      file_id: fileId,
+      file_path: row.file_path,
+      storage_error: storageError.message,
+    });
   }
 
   const { error: metadataError } = await supabase
@@ -552,7 +590,10 @@ export async function deleteHomeworkFile(fileId: string) {
       },
     });
 
-    return { success: false };
+    return {
+      errorMessage: PARTIAL_HOMEWORK_FILE_DELETE_ERROR,
+      success: false,
+    };
   }
 
   return { success: true };

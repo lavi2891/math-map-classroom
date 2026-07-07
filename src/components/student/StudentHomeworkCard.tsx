@@ -13,6 +13,12 @@ import {
 } from "@/components/homework/homeworkLabels";
 import type { HomeworkAssignment, HomeworkFile } from "@/types";
 
+function hasSignedUrl(file: HomeworkFile): file is HomeworkFile & {
+  signedUrl: string;
+} {
+  return Boolean(file.signedUrl);
+}
+
 export function StudentHomeworkCard({
   assignment,
 }: {
@@ -23,7 +29,8 @@ export function StudentHomeworkCard({
   const [localFiles, setLocalFiles] = useState<HomeworkFile[]>(
     submission?.files ?? [],
   );
-  const hasFiles = localFiles.length > 0;
+  const visibleFiles = localFiles.filter(hasSignedUrl);
+  const hasFiles = visibleFiles.length > 0;
 
   function getPhotoBadge() {
     if (hasFiles) {
@@ -75,7 +82,7 @@ export function StudentHomeworkCard({
           ) : null}
         </div>
         <HomeworkFileList
-          files={localFiles}
+          files={visibleFiles}
           onFileDeleted={(fileId) =>
             setLocalFiles((current) =>
               current.filter((file) => file.id !== fileId),
@@ -97,11 +104,16 @@ export function StudentHomeworkCard({
         {isSubmissionOpen ? (
           <div className="rounded-md border border-stone-200 bg-stone-50 p-3">
             <HomeworkSubmissionForm
-              existingFiles={localFiles}
+              existingFiles={visibleFiles}
               homeworkId={assignment.id}
               onSuccess={(uploadedFiles = []) => {
-                if (uploadedFiles.length > 0) {
-                  setLocalFiles((current) => [...current, ...uploadedFiles]);
+                const visibleUploadedFiles = uploadedFiles.filter(hasSignedUrl);
+
+                if (visibleUploadedFiles.length > 0) {
+                  setLocalFiles((current) => [
+                    ...current,
+                    ...visibleUploadedFiles,
+                  ]);
                 }
 
                 setIsSubmissionOpen(false);
