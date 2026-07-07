@@ -150,7 +150,7 @@ Students can read announcements only when all of these are true:
 - `visible_from <= now()`
 - `visible_until is null or visible_until >= now()`
 
-Class staff can read announcements in their classes for management and review.
+Class staff can read non-deleted announcements in their classes for management and review, including hidden, future, and expired announcements.
 
 ### How do read confirmations work?
 
@@ -189,13 +189,15 @@ Current homework limitations:
 
 ### Who can submit homework?
 
-Students can submit only for visible homework in classes where they have active `student` membership.
+Students can view and submit only visible homework in classes where they have active `student` membership.
 
 Visible homework means:
 
 - `deleted_at is null`
 - `is_hidden = false`
 - `visible_from <= now()`
+
+`due_at` does not currently block visibility or submission. Overdue homework remains visible and can still be submitted or updated when it otherwise matches the visibility rules.
 
 The app upserts `homework_submissions` by:
 

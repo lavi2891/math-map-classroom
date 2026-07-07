@@ -131,6 +131,8 @@ Staff visibility:
 - Active class staff can select announcements for their classes.
 - `owner` and `teacher` can create, edit, hide/unhide, and soft delete announcements for their classes.
 - Soft delete means setting `deleted_at`; the app does not hard delete announcement rows.
+- Announcement cards expose lifecycle actions as a grouped top-left action set: hide/unhide, edit, and delete.
+- Delete is a soft delete and requires confirmation in the app before `deleted_at` is set.
 
 ### `announcement_links`
 
@@ -202,6 +204,8 @@ Current app usage:
 - Teachers with active `owner` or `teacher` membership in `class_memberships` can create and edit assignments for that class.
 - Teachers with active `owner` or `teacher` membership can hide/unhide homework through `is_hidden`.
 - Teachers with active `owner` or `teacher` membership can soft delete homework by setting `deleted_at`; the app does not hard delete homework rows.
+- Homework cards expose lifecycle actions as a grouped top-left action set: hide/unhide, edit, and delete.
+- Delete is a soft delete and requires confirmation in the app before `deleted_at` is set.
 - Staff can see non-deleted homework in their classes, including hidden homework.
 - Student visibility means `deleted_at is null`, `is_hidden = false`, and `visible_from <= now()`.
 - `due_at` is shown as the submission deadline. Overdue assignments are still visible and still accept submission updates for now.
