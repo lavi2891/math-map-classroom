@@ -4,6 +4,7 @@ Source of truth:
 
 - `supabase/migrations/0001_current_schema_reference.sql`
 - `supabase/migrations/0002_announcements_workflow.sql`
+- `supabase/migrations/0003_homework_lifecycle.sql`
 
 This project uses Supabase Auth for identity and `public.profiles` for profile metadata. Authorization is contextual and class-based through `public.class_memberships`.
 
@@ -176,18 +177,25 @@ Managers can:
 
 - Create homework assignments.
 - Edit title, description, visibility date, due date, reporting requirements, photo requirement flag, and external URL.
+- Hide and unhide homework through `is_hidden`.
+- Soft delete homework by setting `deleted_at`.
 - View submission summaries and per-student submission details.
 
 Managers must be authorized through `class_memberships`. Do not use `profiles.role`, `classes.teacher_id`, `class_students`, a service role key, or any RLS bypass for homework management.
 
 Current homework limitations:
 
-- Homework hide/delete controls are not implemented because `homework_assignments` does not currently include `is_hidden` or `deleted_at`.
 - Photo upload is not implemented yet. The UI only displays a notice when `require_photo = true`.
 
 ### Who can submit homework?
 
 Students can submit only for visible homework in classes where they have active `student` membership.
+
+Visible homework means:
+
+- `deleted_at is null`
+- `is_hidden = false`
+- `visible_from <= now()`
 
 The app upserts `homework_submissions` by:
 
@@ -249,7 +257,7 @@ The current RLS model follows these rules:
 - `announcements`: staff can view class announcements; students can view visible class announcements; `owner` and `teacher` can manage.
 - `announcement_links`: readable with the parent announcement; `owner` and `teacher` can manage through the parent class.
 - `announcement_reads`: students can mark themselves as read; staff can view read rows for their classes.
-- `homework_assignments`: class members can view; `owner` and `teacher` can manage.
+- `homework_assignments`: staff can view non-deleted rows in their classes; students can view visible rows in their classes; `owner` and `teacher` can manage.
 - `homework_submissions`: students can manage their own submissions; class staff can view.
 - `homework_files`: owners of submissions and class staff can view; submission owners can insert.
 - `knowledge_domains` and `knowledge_skills`: authenticated users can view; any class staff can manage.

@@ -4,6 +4,7 @@ Source of truth:
 
 - `supabase/migrations/0001_current_schema_reference.sql`
 - `supabase/migrations/0002_announcements_workflow.sql`
+- `supabase/migrations/0003_homework_lifecycle.sql`
 
 This document describes the current effective Supabase schema after the contextual class role migration in that file. Earlier definitions in the same migration create the first version of the schema, then the later section replaces the global/legacy class role model.
 
@@ -187,7 +188,10 @@ Columns:
 - `require_photo boolean`
 - `allow_external_url boolean`
 - `external_url text`
+- `is_hidden boolean`
 - `created_by uuid references profiles(id)`
+- `updated_by uuid references profiles(id)`
+- `deleted_at timestamptz`
 - `created_at timestamptz`
 - `updated_at timestamptz`
 
@@ -196,11 +200,13 @@ Manage access is limited to class roles that can manage content.
 Current app usage:
 
 - Teachers with active `owner` or `teacher` membership in `class_memberships` can create and edit assignments for that class.
-- Student visibility currently means `visible_from <= now()`.
+- Teachers with active `owner` or `teacher` membership can hide/unhide homework through `is_hidden`.
+- Teachers with active `owner` or `teacher` membership can soft delete homework by setting `deleted_at`; the app does not hard delete homework rows.
+- Staff can see non-deleted homework in their classes, including hidden homework.
+- Student visibility means `deleted_at is null`, `is_hidden = false`, and `visible_from <= now()`.
 - `due_at` is shown as the submission deadline. Overdue assignments are still visible and still accept submission updates for now.
 - `require_status`, `require_understanding`, and `require_photo` control which expectations are shown in the UI.
 - If `external_url` is filled, the app stores `allow_external_url = true`.
-- There is no effective `is_hidden` or `deleted_at` column on `homework_assignments`; the app does not show hide/delete controls for homework yet.
 
 ### `homework_submissions`
 
@@ -404,6 +410,8 @@ RLS is enabled for the app tables. Policies are based on contextual class member
 - Class members can select their classes and class content.
 - Students can select only visible announcements for their classes.
 - Class staff can select announcements for their classes.
+- Students can select only visible, non-hidden, non-deleted homework for their classes.
+- Class staff can select non-deleted homework for their classes, including hidden homework.
 - `owner`, `teacher`, and `viewer` are class staff.
 - `owner` and `teacher` can manage class content.
 - Only `owner` can update/delete class records and manage memberships after first owner creation.

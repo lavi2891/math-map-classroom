@@ -6,15 +6,17 @@ import type { HomeworkAssignment } from "@/types";
 
 type HomeworkCardProps = {
   assignment: HomeworkAssignment;
+  className?: string;
 };
 
-export function HomeworkCard({ assignment }: HomeworkCardProps) {
+export function HomeworkCard({ assignment, className }: HomeworkCardProps) {
   const summary = assignment.submissionSummary;
   const strugglingCount =
     summary.noUnderstandingCount + summary.partialUnderstandingCount;
 
   return (
     <Card
+      className={className}
       title={assignment.title}
       description={`כיתה ${assignment.className ?? ""}`}
     >

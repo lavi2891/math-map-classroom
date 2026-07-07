@@ -16,6 +16,14 @@ export const understandingLabels: Record<UnderstandingLevel, string> = {
 export function getHomeworkVisibilityLabel(assignment: HomeworkAssignment) {
   const visibleFrom = Date.parse(assignment.visibleFrom);
 
+  if (assignment.deletedAt) {
+    return "נמחק";
+  }
+
+  if (assignment.isHidden) {
+    return "מוסתר";
+  }
+
   if (visibleFrom > Date.now()) {
     return "מוסתר בעתיד";
   }

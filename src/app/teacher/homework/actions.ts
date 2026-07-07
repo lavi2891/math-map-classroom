@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { ROUTES } from "@/lib/constants/routes";
 import {
   createHomeworkAssignment,
+  setHomeworkHidden,
+  softDeleteHomeworkAssignment,
   updateHomeworkAssignment,
   type HomeworkAssignmentInput,
 } from "@/lib/db/homework";
@@ -110,4 +112,52 @@ export async function updateHomeworkAction(
   revalidatePath(ROUTES.studentHome);
 
   return { success: true };
+}
+
+export async function hideHomeworkAction(formData: FormData) {
+  const id = getString(formData, "homeworkId");
+
+  if (!id) {
+    return;
+  }
+
+  const success = await setHomeworkHidden(id, true);
+
+  if (success) {
+    revalidatePath(ROUTES.teacherHomework);
+    revalidatePath(ROUTES.studentClass);
+    revalidatePath(ROUTES.studentHome);
+  }
+}
+
+export async function unhideHomeworkAction(formData: FormData) {
+  const id = getString(formData, "homeworkId");
+
+  if (!id) {
+    return;
+  }
+
+  const success = await setHomeworkHidden(id, false);
+
+  if (success) {
+    revalidatePath(ROUTES.teacherHomework);
+    revalidatePath(ROUTES.studentClass);
+    revalidatePath(ROUTES.studentHome);
+  }
+}
+
+export async function deleteHomeworkAction(formData: FormData) {
+  const id = getString(formData, "homeworkId");
+
+  if (!id) {
+    return;
+  }
+
+  const success = await softDeleteHomeworkAssignment(id);
+
+  if (success) {
+    revalidatePath(ROUTES.teacherHomework);
+    revalidatePath(ROUTES.studentClass);
+    revalidatePath(ROUTES.studentHome);
+  }
 }

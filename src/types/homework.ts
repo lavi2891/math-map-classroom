@@ -31,7 +31,9 @@ export type HomeworkAssignment = {
   description: string;
   dueAt?: string;
   dueDate?: string;
+  deletedAt?: string;
   externalUrl?: string;
+  isHidden: boolean;
   isOverdue: boolean;
   requirePhoto: boolean;
   requireStatus: boolean;

@@ -40,9 +40,11 @@ type HomeworkRow = {
   class_id: string;
   classes: { name: string } | { name: string }[] | null;
   description: string;
+  deleted_at: string | null;
   due_at: string | null;
   external_url: string | null;
   id: string;
+  is_hidden: boolean | null;
   require_photo: boolean | null;
   require_status: boolean | null;
   require_understanding: boolean | null;
@@ -205,8 +207,10 @@ function toHomeworkAssignment(
     description: row.description,
     dueAt,
     dueDate: dueAt ? formatDateTime(dueAt) : undefined,
+    deletedAt: row.deleted_at ?? undefined,
     externalUrl: row.external_url ?? undefined,
     id: row.id,
+    isHidden: row.is_hidden ?? false,
     isOverdue: dueAt ? Date.parse(dueAt) < Date.now() : false,
     requirePhoto: row.require_photo ?? false,
     requireStatus: row.require_status ?? true,
@@ -325,13 +329,16 @@ async function getHomeworkRows(classIds: string[], visibleOnly: boolean) {
   let query = supabase
     .from("homework_assignments")
     .select(
-      "id, class_id, title, description, visible_from, due_at, require_status, require_understanding, require_photo, allow_external_url, external_url, classes(name)",
+      "id, class_id, title, description, visible_from, due_at, require_status, require_understanding, require_photo, allow_external_url, external_url, is_hidden, deleted_at, classes(name)",
     )
     .in("class_id", classIds)
+    .is("deleted_at", null)
     .order("visible_from", { ascending: false });
 
   if (visibleOnly) {
-    query = query.lte("visible_from", new Date().toISOString());
+    query = query
+      .eq("is_hidden", false)
+      .lte("visible_from", new Date().toISOString());
   }
 
   const { data, error } = await query.limit(100);
@@ -457,6 +464,7 @@ export async function createHomeworkAssignment(input: HomeworkAssignmentInput) {
     require_status: input.requireStatus,
     require_understanding: input.requireUnderstanding,
     title: input.title,
+    updated_by: user.id,
     visible_from: input.visibleFrom ?? new Date().toISOString(),
   });
 
@@ -467,6 +475,12 @@ export async function updateHomeworkAssignment(
   id: string,
   input: HomeworkAssignmentInput,
 ) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return false;
+  }
+
   const manageableClassIds = (await getCurrentUserManageableMemberships()).map(
     (membership) => membership.classId,
   );
@@ -488,9 +502,51 @@ export async function updateHomeworkAssignment(
       require_status: input.requireStatus,
       require_understanding: input.requireUnderstanding,
       title: input.title,
+      updated_by: user.id,
       visible_from: input.visibleFrom ?? new Date().toISOString(),
     })
-    .eq("id", id);
+    .eq("id", id)
+    .is("deleted_at", null);
+
+  return !error;
+}
+
+export async function setHomeworkHidden(id: string, isHidden: boolean) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return false;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("homework_assignments")
+    .update({
+      is_hidden: isHidden,
+      updated_by: user.id,
+    })
+    .eq("id", id)
+    .is("deleted_at", null);
+
+  return !error;
+}
+
+export async function softDeleteHomeworkAssignment(id: string) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return false;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("homework_assignments")
+    .update({
+      deleted_at: new Date().toISOString(),
+      updated_by: user.id,
+    })
+    .eq("id", id)
+    .is("deleted_at", null);
 
   return !error;
 }
