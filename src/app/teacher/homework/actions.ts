@@ -68,11 +68,16 @@ export async function createHomeworkAction(
     };
   }
 
-  const success = await createHomeworkAssignment(input);
+  const result = await createHomeworkAssignment(input);
 
-  if (!success) {
+  if (!result.success) {
+    const detail =
+      process.env.NODE_ENV === "development" && result.errorMessage
+        ? `: ${result.errorMessage}`
+        : "";
+
     return {
-      error: "לא הצלחנו לשמור את שיעורי הבית.",
+      error: `לא הצלחנו לשמור את שיעורי הבית${detail}`,
       success: false,
     };
   }

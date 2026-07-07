@@ -35,6 +35,11 @@ export type HomeworkSubmissionInput = {
   understanding: UnderstandingLevel;
 };
 
+export type HomeworkMutationResult = {
+  errorMessage?: string;
+  success: boolean;
+};
+
 type HomeworkRow = {
   allow_external_url: boolean | null;
   class_id: string;
@@ -441,7 +446,7 @@ export async function createHomeworkAssignment(input: HomeworkAssignmentInput) {
   const user = await getCurrentUser();
 
   if (!user) {
-    return false;
+    return { success: false };
   }
 
   const manageableClassIds = (await getCurrentUserManageableMemberships()).map(
@@ -449,11 +454,11 @@ export async function createHomeworkAssignment(input: HomeworkAssignmentInput) {
   );
 
   if (!manageableClassIds.includes(input.classId)) {
-    return false;
+    return { success: false };
   }
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.from("homework_assignments").insert({
+  const insertPayload = {
     allow_external_url: input.allowExternalUrl,
     class_id: input.classId,
     created_by: user.id,
@@ -466,9 +471,41 @@ export async function createHomeworkAssignment(input: HomeworkAssignmentInput) {
     title: input.title,
     updated_by: user.id,
     visible_from: input.visibleFrom ?? new Date().toISOString(),
-  });
+  };
+  const { error } = await supabase
+    .from("homework_assignments")
+    .insert(insertPayload);
 
-  return !error;
+  if (error) {
+    console.error("createHomeworkAssignment failed", {
+      error: {
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        message: error.message,
+      },
+      payload: {
+        allow_external_url: insertPayload.allow_external_url,
+        class_id: insertPayload.class_id,
+        created_by: insertPayload.created_by,
+        due_at: insertPayload.due_at,
+        has_external_url: Boolean(insertPayload.external_url),
+        require_photo: insertPayload.require_photo,
+        require_status: insertPayload.require_status,
+        require_understanding: insertPayload.require_understanding,
+        title_exists: Boolean(insertPayload.title),
+        title_length: insertPayload.title.length,
+        visible_from: insertPayload.visible_from,
+      },
+    });
+
+    return {
+      errorMessage: error.message,
+      success: false,
+    };
+  }
+
+  return { success: true };
 }
 
 export async function updateHomeworkAssignment(
