@@ -56,35 +56,39 @@ export function HomeworkFileList({
   }
 
   return (
-    <div className="grid gap-2">
+    <div className="grid w-full min-w-0 gap-2">
       <p className="text-sm font-bold text-stone-700">צילומים שצורפו</p>
       {error ? <p className="text-sm font-bold text-red-700">{error}</p> : null}
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid w-full min-w-0 gap-2 sm:grid-cols-2">
         {visibleFiles.map((file) => (
           <div
-            className="relative grid gap-2 rounded-md border border-stone-200 bg-stone-50 p-2"
+            className="relative grid min-w-0 max-w-full overflow-hidden rounded-md border border-stone-200 bg-stone-50"
             key={file.id}
           >
             <a
-              className="grid gap-2 text-sm font-bold text-teal-700 transition hover:text-teal-800"
+              className="grid min-w-0 max-w-full overflow-hidden text-sm font-bold text-teal-700 transition hover:text-teal-800"
               href={file.signedUrl}
               rel="noreferrer"
               target="_blank"
             >
               {file.mimeType?.startsWith("image/") ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  alt={file.fileName}
-                  className="h-28 w-full rounded-md object-cover"
-                  src={file.signedUrl}
-                />
+                <span className="block aspect-video w-full min-w-0 overflow-hidden bg-white">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    alt={file.fileName}
+                    className="block h-full w-full max-w-full object-contain"
+                    src={file.signedUrl}
+                  />
+                </span>
               ) : null}
-              <span>פתח צילום: {file.fileName}</span>
+              <span className="line-clamp-2 min-w-0 max-w-full overflow-hidden break-words px-2 py-2 text-xs leading-5 [overflow-wrap:anywhere]">
+                פתח צילום: {file.fileName}
+              </span>
             </a>
             {removable ? (
               <button
                 aria-label="הסר צילום"
-                className="absolute left-3 top-3 grid min-h-10 min-w-10 place-items-center rounded-full border border-stone-200 bg-white text-lg font-bold leading-none text-stone-700 shadow-sm transition hover:bg-red-50 hover:text-red-700"
+                className="absolute left-2 top-2 z-10 grid min-h-10 min-w-10 place-items-center rounded-full border border-stone-200 bg-white text-lg font-bold leading-none text-stone-700 shadow-sm transition hover:bg-red-50 hover:text-red-700"
                 onClick={() => setDeleteFile(file)}
                 title="הסר צילום"
                 type="button"

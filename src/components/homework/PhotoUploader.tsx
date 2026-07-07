@@ -49,8 +49,8 @@ export function PhotoUploader({
   }
 
   return (
-    <section className="grid gap-2 rounded-md border border-stone-200 bg-stone-50 p-3">
-      <div className="grid gap-1">
+    <section className="grid min-w-0 gap-2 rounded-md border border-stone-200 bg-stone-50 p-3">
+      <div className="grid min-w-0 gap-1">
         <label
           className="text-sm font-bold text-stone-950"
           htmlFor={inputId}
@@ -74,9 +74,14 @@ export function PhotoUploader({
         type="file"
       />
       {files.length > 0 ? (
-        <ul className="grid gap-1 text-sm text-stone-700">
+        <ul className="grid min-w-0 gap-1 text-sm text-stone-700">
           {files.map((file) => (
-            <li key={`${file.name}-${file.size}`}>{file.name}</li>
+            <li
+              className="min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]"
+              key={`${file.name}-${file.size}`}
+            >
+              {file.name}
+            </li>
           ))}
         </ul>
       ) : null}
