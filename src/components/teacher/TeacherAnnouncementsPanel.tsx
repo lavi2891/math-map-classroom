@@ -8,6 +8,7 @@ import {
   getAnnouncementStatusLabel,
 } from "@/components/announcements/announcementLabels";
 import { Card } from "@/components/app/Card";
+import { CardActionButtons } from "@/components/app/CardActionButtons";
 import { EmptyState } from "@/components/app/EmptyState";
 import {
   createAnnouncementAction,
@@ -19,7 +20,6 @@ import {
 import type { Announcement, ClassSummary } from "@/types";
 import { AnnouncementForm } from "./AnnouncementForm";
 import { AnnouncementReadDetails } from "./AnnouncementReadDetails";
-import { TeacherCardActions } from "./TeacherCardActions";
 
 type TeacherAnnouncementsPanelProps = {
   announcements: Announcement[];
@@ -154,7 +154,7 @@ export function TeacherAnnouncementsPanel({
               </Card>
             ) : (
               <div className="relative" key={announcement.id}>
-                <TeacherCardActions
+                <CardActionButtons
                   hidden={announcement.isHidden}
                   hideAction={hideAnnouncementAction}
                   idFieldName="announcementId"

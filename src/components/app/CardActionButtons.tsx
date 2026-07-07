@@ -8,16 +8,16 @@ type IconButtonProps = {
   type?: "button" | "submit";
 };
 
-type TeacherCardActionsProps = {
+type CardActionButtonsProps = {
   deleteLabel?: string;
   hidden: boolean;
+  hideAction: (formData: FormData) => void | Promise<void>;
   idFieldName: string;
   idValue: string;
   onDeleteRequest: () => void;
   onEdit: () => void;
-  unhideLabel?: string;
-  hideAction: (formData: FormData) => void | Promise<void>;
   unhideAction: (formData: FormData) => void | Promise<void>;
+  unhideLabel?: string;
 };
 
 function EyeIcon() {
@@ -127,24 +127,21 @@ function IconButton({
   );
 }
 
-export function TeacherCardActions({
+export function CardActionButtons({
   deleteLabel = "מחיקה",
   hidden,
+  hideAction,
   idFieldName,
   idValue,
   onDeleteRequest,
   onEdit,
-  unhideLabel = "פרסם מחדש",
-  hideAction,
   unhideAction,
-}: TeacherCardActionsProps) {
+  unhideLabel = "פרסם מחדש",
+}: CardActionButtonsProps) {
   const visibilityLabel = hidden ? unhideLabel : "הסתר";
 
   return (
-    <div
-      className="absolute left-3 top-3 z-10 flex gap-1"
-      dir="ltr"
-    >
+    <div className="absolute left-3 top-3 z-10 flex gap-1" dir="ltr">
       <form action={hidden ? unhideAction : hideAction}>
         <input name={idFieldName} type="hidden" value={idValue} />
         <IconButton label={visibilityLabel} type="submit">

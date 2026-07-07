@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { EmptyState } from "@/components/app/EmptyState";
 import { Card } from "@/components/app/Card";
+import { CardActionButtons } from "@/components/app/CardActionButtons";
 import { HomeworkCard } from "@/components/homework/HomeworkCard";
-import { TeacherCardActions } from "@/components/teacher/TeacherCardActions";
 import {
   createHomeworkAction,
   deleteHomeworkAction,
@@ -82,7 +82,7 @@ export function TeacherHomeworkPanel({
                   </Card>
                 ) : (
                   <div className="relative">
-                    <TeacherCardActions
+                    <CardActionButtons
                       hidden={assignment.isHidden}
                       hideAction={hideHomeworkAction}
                       idFieldName="homeworkId"
