@@ -11,7 +11,7 @@ import {
   getUnderstandingLabel,
   getUnderstandingTone,
 } from "@/components/homework/homeworkLabels";
-import type { HomeworkAssignment } from "@/types";
+import type { HomeworkAssignment, HomeworkFile } from "@/types";
 
 export function StudentHomeworkCard({
   assignment,
@@ -20,8 +20,22 @@ export function StudentHomeworkCard({
 }) {
   const [isSubmissionOpen, setIsSubmissionOpen] = useState(false);
   const submission = assignment.submission;
-  const files = submission?.files ?? [];
-  const hasFiles = files.length > 0;
+  const [localFiles, setLocalFiles] = useState<HomeworkFile[]>(
+    submission?.files ?? [],
+  );
+  const hasFiles = localFiles.length > 0;
+
+  function getPhotoBadge() {
+    if (hasFiles) {
+      return <StatusBadge tone="success">צורף צילום</StatusBadge>;
+    }
+
+    if (assignment.requirePhoto) {
+      return <StatusBadge tone="warning">נדרש צילום</StatusBadge>;
+    }
+
+    return null;
+  }
 
   return (
     <Card
@@ -49,14 +63,22 @@ export function StudentHomeworkCard({
               {getUnderstandingLabel(submission?.understanding)}
             </StatusBadge>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-bold text-stone-700">צילום:</span>
-            <StatusBadge tone={hasFiles ? "success" : "neutral"}>
-              {hasFiles ? "צורף צילום" : "לא צורף צילום"}
-            </StatusBadge>
-          </div>
+          {assignment.requirePhoto || hasFiles ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-bold text-stone-700">צילום:</span>
+              {getPhotoBadge()}
+            </div>
+          ) : null}
         </div>
-        <HomeworkFileList files={files} />
+        <HomeworkFileList
+          files={localFiles}
+          onFileDeleted={(fileId) =>
+            setLocalFiles((current) =>
+              current.filter((file) => file.id !== fileId),
+            )
+          }
+          removable
+        />
         {assignment.externalUrl ? (
           <a
             className="text-sm font-bold text-teal-700"
@@ -71,9 +93,15 @@ export function StudentHomeworkCard({
         {isSubmissionOpen ? (
           <div className="rounded-md border border-stone-200 bg-stone-50 p-3">
             <HomeworkSubmissionForm
-              existingFiles={files}
+              existingFiles={localFiles}
               homeworkId={assignment.id}
-              onSuccess={() => setIsSubmissionOpen(false)}
+              onSuccess={(uploadedFiles = []) => {
+                if (uploadedFiles.length > 0) {
+                  setLocalFiles((current) => [...current, ...uploadedFiles]);
+                }
+
+                setIsSubmissionOpen(false);
+              }}
               requirePhoto={assignment.requirePhoto}
               submission={submission}
             />

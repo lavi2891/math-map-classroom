@@ -88,6 +88,13 @@ type HomeworkFileRow = {
   submission_id: string;
 };
 
+type HomeworkFileOwnerRow = HomeworkFileRow & {
+  homework_submissions:
+    | { student_id: string }
+    | { student_id: string }[]
+    | null;
+};
+
 type MembershipStudentRow = {
   class_id: string;
   profiles:
@@ -403,6 +410,95 @@ export async function createHomeworkFileSignedUrls(filePaths: string[]) {
   );
 
   return signedUrls;
+}
+
+export async function deleteHomeworkFile(fileId: string) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return { success: false };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("homework_files")
+    .select(
+      "id, submission_id, file_path, file_name, mime_type, size_bytes, homework_submissions!inner(student_id)",
+    )
+    .eq("id", fileId)
+    .maybeSingle();
+
+  if (error || !data) {
+    if (error) {
+      console.error("deleteHomeworkFile select failed", {
+        error: {
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          message: error.message,
+        },
+        payload: { file_id: fileId },
+      });
+    }
+
+    return { success: false };
+  }
+
+  const row = data as unknown as HomeworkFileOwnerRow;
+  const submission = Array.isArray(row.homework_submissions)
+    ? row.homework_submissions[0]
+    : row.homework_submissions;
+
+  if (!submission || submission.student_id !== user.id) {
+    console.error("deleteHomeworkFile ownership check failed", {
+      payload: {
+        file_id: fileId,
+        user_id: user.id,
+      },
+    });
+
+    return { success: false };
+  }
+
+  const { error: storageError } = await supabase.storage
+    .from("homework-submissions")
+    .remove([row.file_path]);
+
+  if (storageError) {
+    console.error("deleteHomeworkFile storage delete failed", {
+      error: {
+        message: storageError.message,
+      },
+      payload: {
+        file_id: fileId,
+      },
+    });
+
+    return { success: false };
+  }
+
+  const { error: metadataError } = await supabase
+    .from("homework_files")
+    .delete()
+    .eq("id", fileId);
+
+  if (metadataError) {
+    console.error("deleteHomeworkFile metadata delete failed", {
+      error: {
+        code: metadataError.code,
+        details: metadataError.details,
+        hint: metadataError.hint,
+        message: metadataError.message,
+      },
+      payload: {
+        file_id: fileId,
+      },
+    });
+
+    return { success: false };
+  }
+
+  return { success: true };
 }
 
 function mergeStudentSubmissionDetails(

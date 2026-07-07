@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { ROUTES } from "@/lib/constants/routes";
-import { upsertHomeworkSubmission } from "@/lib/db/homework";
+import { deleteHomeworkFile, upsertHomeworkSubmission } from "@/lib/db/homework";
 import type { HomeworkStatus, UnderstandingLevel } from "@/types";
 
 export type HomeworkSubmissionActionState = {
@@ -11,6 +11,11 @@ export type HomeworkSubmissionActionState = {
   submissionId?: string;
   success: boolean;
   userId?: string;
+};
+
+export type HomeworkFileActionState = {
+  error?: string;
+  success: boolean;
 };
 
 const HOMEWORK_STATUSES: HomeworkStatus[] = ["not_started", "started", "done"];
@@ -79,4 +84,32 @@ export async function submitHomework(
     success: true,
     userId: result.userId,
   };
+}
+
+export async function deleteHomeworkFileAction(
+  formData: FormData,
+): Promise<HomeworkFileActionState> {
+  const fileId = getString(formData, "fileId");
+
+  if (!fileId) {
+    return {
+      error: "לא הצלחנו להסיר את הצילום. נסה שוב.",
+      success: false,
+    };
+  }
+
+  const result = await deleteHomeworkFile(fileId);
+
+  if (!result.success) {
+    return {
+      error: "לא הצלחנו להסיר את הצילום. נסה שוב.",
+      success: false,
+    };
+  }
+
+  revalidatePath(ROUTES.studentClass);
+  revalidatePath(ROUTES.studentHome);
+  revalidatePath(ROUTES.teacherHomework);
+
+  return { success: true };
 }

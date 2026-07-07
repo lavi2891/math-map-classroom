@@ -212,6 +212,7 @@ Students can upload homework photos only for their own submission. Storage paths
 - `{student_id}/{homework_id}/{timestamp}-{safeFileName}`
 
 The `student_id` path segment must match `auth.uid()`. The app does not use a service role key or public bucket access for homework photos.
+Students can remove only files connected to their own homework submission.
 
 Class staff can view uploaded homework files for submissions in their classes. Private storage objects are accessed through signed URLs when shown in the app.
 

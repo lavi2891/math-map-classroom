@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { submitHomework } from "@/app/student/homework/actions";
 import type { HomeworkSubmissionActionState } from "@/app/student/homework/actions";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -19,9 +20,17 @@ import type {
 type HomeworkSubmissionFormProps = {
   existingFiles?: HomeworkFile[];
   homeworkId: string;
-  onSuccess: () => void;
+  onSuccess: (uploadedFiles?: HomeworkFile[]) => void;
   requirePhoto?: boolean;
   submission?: HomeworkSubmissionDetail;
+};
+
+type HomeworkFileMetadataRow = {
+  file_name: string;
+  file_path: string;
+  id: string;
+  mime_type: string | null;
+  size_bytes: number | null;
 };
 
 const statusOptions: HomeworkStatus[] = ["not_started", "started", "done"];
@@ -58,6 +67,7 @@ export function HomeworkSubmissionForm({
   const [fileError, setFileError] = useState<string | undefined>();
   const [isUploading, setIsUploading] = useState(false);
   const handledSubmissionId = useRef<string | undefined>(undefined);
+  const router = useRouter();
 
   useEffect(() => {
     async function uploadFiles() {
@@ -73,7 +83,8 @@ export function HomeworkSubmissionForm({
       handledSubmissionId.current = state.submissionId;
 
       if (files.length === 0) {
-        onSuccess();
+        router.refresh();
+        onSuccess([]);
         return;
       }
 
@@ -81,6 +92,7 @@ export function HomeworkSubmissionForm({
       setFileError(undefined);
 
       const supabase = createSupabaseBrowserClient();
+      const uploadedFiles: HomeworkFile[] = [];
 
       for (const [index, file] of files.entries()) {
         const filePath = `${state.userId}/${homeworkId}/${Date.now()}-${index}-${
@@ -100,7 +112,7 @@ export function HomeworkSubmissionForm({
           return;
         }
 
-        const { error: metadataError } = await supabase
+        const { data: metadata, error: metadataError } = await supabase
           .from("homework_files")
           .insert({
             file_name: file.name,
@@ -108,22 +120,39 @@ export function HomeworkSubmissionForm({
             mime_type: file.type || null,
             size_bytes: file.size,
             submission_id: state.submissionId,
-          });
+          })
+          .select("id, file_path, file_name, mime_type, size_bytes")
+          .single<HomeworkFileMetadataRow>();
 
-        if (metadataError) {
+        if (metadataError || !metadata) {
           setFileError("הצילום עלה, אבל לא הצלחנו לשמור את הפרטים שלו.");
           setIsUploading(false);
           handledSubmissionId.current = undefined;
           return;
         }
+
+        const { data: signedUrlData } = await supabase.storage
+          .from("homework-submissions")
+          .createSignedUrl(filePath, 60 * 10);
+
+        uploadedFiles.push({
+          fileName: metadata.file_name,
+          filePath: metadata.file_path,
+          id: metadata.id,
+          mimeType: metadata.mime_type ?? undefined,
+          signedUrl: signedUrlData?.signedUrl,
+          sizeBytes: metadata.size_bytes ?? undefined,
+        });
       }
 
       setIsUploading(false);
-      onSuccess();
+      setFiles([]);
+      router.refresh();
+      onSuccess(uploadedFiles);
     }
 
     void uploadFiles();
-  }, [files, homeworkId, onSuccess, state]);
+  }, [files, homeworkId, onSuccess, router, state]);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     if (requirePhoto && existingFiles.length === 0 && files.length === 0) {

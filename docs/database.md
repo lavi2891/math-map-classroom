@@ -264,6 +264,7 @@ Current app usage:
 - Students can attach one or more notebook photos after their homework submission row is saved.
 - The browser uploads images to Supabase Storage with the authenticated user session.
 - The app inserts one `homework_files` metadata row per uploaded image.
+- Students can remove file metadata only for files connected to their own submissions.
 - Teachers view uploaded files from homework submission details.
 - Private files are opened through short-lived signed URLs; the bucket is not public.
 
