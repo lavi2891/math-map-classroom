@@ -572,20 +572,53 @@ export async function softDeleteHomeworkAssignment(id: string) {
   const user = await getCurrentUser();
 
   if (!user) {
-    return false;
+    return { success: false };
   }
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("homework_assignments")
     .update({
       deleted_at: new Date().toISOString(),
       updated_by: user.id,
     })
     .eq("id", id)
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .select("id")
+    .maybeSingle();
 
-  return !error;
+  if (error) {
+    console.error("softDeleteHomeworkAssignment failed", {
+      error: {
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        message: error.message,
+      },
+      payload: {
+        homework_id: id,
+        updated_by: user.id,
+      },
+    });
+
+    return {
+      errorMessage: error.message,
+      success: false,
+    };
+  }
+
+  if (!data) {
+    console.error("softDeleteHomeworkAssignment updated no rows", {
+      payload: {
+        homework_id: id,
+        updated_by: user.id,
+      },
+    });
+
+    return { success: false };
+  }
+
+  return { success: true };
 }
 
 export async function upsertHomeworkSubmission(input: HomeworkSubmissionInput) {

@@ -151,18 +151,35 @@ export async function unhideHomeworkAction(formData: FormData) {
   }
 }
 
-export async function deleteHomeworkAction(formData: FormData) {
+export async function deleteHomeworkAction(
+  formData: FormData,
+): Promise<HomeworkActionState> {
   const id = getString(formData, "homeworkId");
 
   if (!id) {
-    return;
+    return {
+      error: "חסרים פרטים למחיקת שיעורי הבית.",
+      success: false,
+    };
   }
 
-  const success = await softDeleteHomeworkAssignment(id);
+  const result = await softDeleteHomeworkAssignment(id);
 
-  if (success) {
+  if (result.success) {
     revalidatePath(ROUTES.teacherHomework);
     revalidatePath(ROUTES.studentClass);
     revalidatePath(ROUTES.studentHome);
+
+    return { success: true };
   }
+
+  const detail =
+    process.env.NODE_ENV === "development" && result.errorMessage
+      ? `: ${result.errorMessage}`
+      : "";
+
+  return {
+    error: `לא הצלחנו למחוק את שיעורי הבית${detail}`,
+    success: false,
+  };
 }

@@ -155,11 +155,18 @@ function DeleteHomeworkDialog({
           >
             ביטול
           </button>
-          <form action={deleteHomeworkAction}>
+          <form
+            action={async (formData) => {
+              const result = await deleteHomeworkAction(formData);
+
+              if (result.success) {
+                onClose();
+              }
+            }}
+          >
             <input name="homeworkId" type="hidden" value={assignmentId} />
             <button
               className="min-h-11 w-full rounded-md bg-red-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-800"
-              onClick={onClose}
               type="submit"
             >
               מחק
