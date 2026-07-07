@@ -55,7 +55,7 @@ export function HomeworkFileList({
       <div className="grid gap-2 sm:grid-cols-2">
         {files.map((file) => (
           <div
-            className="grid gap-2 rounded-md border border-stone-200 bg-stone-50 p-2"
+            className="relative grid gap-2 rounded-md border border-stone-200 bg-stone-50 p-2"
             key={file.id}
           >
             <a
@@ -77,11 +77,12 @@ export function HomeworkFileList({
             {removable ? (
               <button
                 aria-label="הסר צילום"
-                className="min-h-10 rounded-md border border-red-200 px-3 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50"
+                className="absolute left-3 top-3 grid min-h-10 min-w-10 place-items-center rounded-full border border-stone-200 bg-white text-lg font-bold leading-none text-stone-700 shadow-sm transition hover:bg-red-50 hover:text-red-700"
                 onClick={() => setDeleteFile(file)}
+                title="הסר צילום"
                 type="button"
               >
-                הסר צילום
+                ×
               </button>
             ) : null}
           </div>
