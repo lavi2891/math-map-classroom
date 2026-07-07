@@ -1,3 +1,5 @@
+"use client";
+
 import {
   announcementCategoryLabels,
   formatDateTimeInput,
@@ -8,6 +10,7 @@ type AnnouncementFormProps = {
   action: (formData: FormData) => Promise<void>;
   announcement?: Announcement;
   classes: ClassSummary[];
+  onCancel: () => void;
   submitLabel: string;
 };
 
@@ -18,24 +21,28 @@ const categories: AnnouncementCategory[] = [
   "material",
 ];
 
+const controlClass =
+  "box-border min-h-11 w-full min-w-0 max-w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950";
+
 export function AnnouncementForm({
   action,
   announcement,
   classes,
+  onCancel,
   submitLabel,
 }: AnnouncementFormProps) {
   const links = announcement?.links ?? [];
 
   return (
-    <form action={action} className="grid gap-3">
+    <form action={action} className="grid min-w-0 gap-3" dir="rtl">
       {announcement ? (
         <input name="announcementId" type="hidden" value={announcement.id} />
       ) : null}
 
-      <label className="grid gap-1 text-sm font-semibold text-stone-700">
+      <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-700">
         כיתה
         <select
-          className="min-h-11 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950"
+          className={controlClass}
           defaultValue={announcement?.classId ?? classes[0]?.id}
           name="classId"
           required
@@ -48,10 +55,10 @@ export function AnnouncementForm({
         </select>
       </label>
 
-      <label className="grid gap-1 text-sm font-semibold text-stone-700">
+      <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-700">
         כותרת
         <input
-          className="min-h-11 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950"
+          className={controlClass}
           defaultValue={announcement?.title}
           name="title"
           required
@@ -59,21 +66,21 @@ export function AnnouncementForm({
         />
       </label>
 
-      <label className="grid gap-1 text-sm font-semibold text-stone-700">
+      <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-700">
         תוכן
         <textarea
-          className="min-h-28 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm leading-6 text-stone-950"
+          className="box-border min-h-28 w-full min-w-0 max-w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm leading-6 text-stone-950"
           defaultValue={announcement?.body}
           name="body"
           required
         />
       </label>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <label className="grid gap-1 text-sm font-semibold text-stone-700">
+      <div className="grid min-w-0 gap-3 md:grid-cols-3">
+        <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-700">
           קטגוריה
           <select
-            className="min-h-11 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950"
+            className={controlClass}
             defaultValue={announcement?.category ?? "general"}
             name="category"
           >
@@ -85,20 +92,20 @@ export function AnnouncementForm({
           </select>
         </label>
 
-        <label className="grid gap-1 text-sm font-semibold text-stone-700">
+        <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-700">
           גלויה החל מ
           <input
-            className="min-h-11 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950"
+            className={controlClass}
             defaultValue={formatDateTimeInput(announcement?.visibleFrom)}
             name="visibleFrom"
             type="datetime-local"
           />
         </label>
 
-        <label className="grid gap-1 text-sm font-semibold text-stone-700">
+        <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-700">
           גלויה עד
           <input
-            className="min-h-11 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950"
+            className={controlClass}
             defaultValue={formatDateTimeInput(announcement?.visibleUntil)}
             name="visibleUntil"
             type="datetime-local"
@@ -106,8 +113,8 @@ export function AnnouncementForm({
         </label>
       </div>
 
-      <div className="grid gap-2 rounded-md border border-stone-200 bg-stone-50 p-3 text-sm font-semibold text-stone-700">
-        <label className="flex items-center gap-2">
+      <div className="grid min-w-0 gap-2 rounded-md border border-stone-200 bg-stone-50 p-3 text-sm font-semibold text-stone-700">
+        <label className="flex min-h-11 items-center gap-2">
           <input
             className="size-4"
             defaultChecked={announcement?.isPinned ?? false}
@@ -116,7 +123,7 @@ export function AnnouncementForm({
           />
           נעיצה בראש הרשימה
         </label>
-        <label className="flex items-center gap-2">
+        <label className="flex min-h-11 items-center gap-2">
           <input
             className="size-4"
             defaultChecked={announcement?.isHidden ?? false}
@@ -125,7 +132,7 @@ export function AnnouncementForm({
           />
           מוסתרת מתלמידים
         </label>
-        <label className="flex items-center gap-2">
+        <label className="flex min-h-11 items-center gap-2">
           <input
             className="size-4"
             defaultChecked={announcement?.requireReadConfirmation ?? false}
@@ -136,19 +143,19 @@ export function AnnouncementForm({
         </label>
       </div>
 
-      <div className="grid gap-2 rounded-md border border-stone-200 p-3">
+      <div className="grid min-w-0 gap-2 rounded-md border border-stone-200 p-3">
         <p className="text-sm font-bold text-stone-950">קישורים מצורפים</p>
         {[0, 1, 2].map((index) => (
-          <div className="grid gap-2 md:grid-cols-2" key={index}>
+          <div className="grid min-w-0 gap-2 md:grid-cols-2" key={index}>
             <input
-              className="min-h-11 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950"
+              className={controlClass}
               defaultValue={links[index]?.title}
               name="linkTitle"
               placeholder="כותרת קישור"
               type="text"
             />
             <input
-              className="min-h-11 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950"
+              className={controlClass}
               defaultValue={links[index]?.url}
               name="linkUrl"
               placeholder="https://"
@@ -158,12 +165,21 @@ export function AnnouncementForm({
         ))}
       </div>
 
-      <button
-        className="min-h-11 rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-teal-800"
-        type="submit"
-      >
-        {submitLabel}
-      </button>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <button
+          className="min-h-11 rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-teal-800"
+          type="submit"
+        >
+          {submitLabel}
+        </button>
+        <button
+          className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-50"
+          onClick={onCancel}
+          type="button"
+        >
+          ביטול
+        </button>
+      </div>
     </form>
   );
 }
