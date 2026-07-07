@@ -19,6 +19,7 @@ import {
 import type { Announcement, ClassSummary } from "@/types";
 import { AnnouncementForm } from "./AnnouncementForm";
 import { AnnouncementReadDetails } from "./AnnouncementReadDetails";
+import { TeacherCardActions } from "./TeacherCardActions";
 
 type TeacherAnnouncementsPanelProps = {
   announcements: Announcement[];
@@ -35,48 +36,6 @@ function ReadCount({ announcement }: { announcement: Announcement }) {
       {announcement.readCount ?? 0}/{announcement.totalStudentCount ?? 0} תלמידים
       סימנו שקראו
     </p>
-  );
-}
-
-function AnnouncementActions({
-  announcement,
-  onDeleteRequest,
-  onEdit,
-}: {
-  announcement: Announcement;
-  onDeleteRequest: () => void;
-  onEdit: () => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      <button
-        className="min-h-10 rounded-md border border-stone-200 px-3 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-50"
-        onClick={onEdit}
-        type="button"
-      >
-        עריכה
-      </button>
-      <form
-        action={
-          announcement.isHidden ? unhideAnnouncementAction : hideAnnouncementAction
-        }
-      >
-        <input name="announcementId" type="hidden" value={announcement.id} />
-        <button
-          className="min-h-10 rounded-md border border-stone-200 px-3 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-50"
-          type="submit"
-        >
-          {announcement.isHidden ? "בטל הסתרה" : "הסתר"}
-        </button>
-      </form>
-      <button
-        className="min-h-10 rounded-md border border-red-200 px-3 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50"
-        onClick={onDeleteRequest}
-        type="button"
-      >
-        מחק
-      </button>
-    </div>
   );
 }
 
@@ -183,21 +142,35 @@ export function TeacherAnnouncementsPanel({
           announcements.map((announcement) => {
             const isEditing = editingAnnouncementId === announcement.id;
 
-            return (
-              <Card
-                key={announcement.id}
-                title={announcement.title}
-                description={`כיתה ${announcement.className ?? ""}`}
-              >
-                {isEditing ? (
-                  <AnnouncementForm
-                    action={updateAnnouncementAction}
-                    announcement={announcement}
-                    classes={classes}
-                    onCancel={() => setEditingAnnouncementId(null)}
-                    submitLabel="שמור שינויים"
-                  />
-                ) : (
+            return isEditing ? (
+              <Card key={announcement.id} title="עריכת הודעה">
+                <AnnouncementForm
+                  action={updateAnnouncementAction}
+                  announcement={announcement}
+                  classes={classes}
+                  onCancel={() => setEditingAnnouncementId(null)}
+                  submitLabel="שמור שינויים"
+                />
+              </Card>
+            ) : (
+              <div className="relative" key={announcement.id}>
+                <TeacherCardActions
+                  hidden={announcement.isHidden}
+                  hideAction={hideAnnouncementAction}
+                  idFieldName="announcementId"
+                  idValue={announcement.id}
+                  onDeleteRequest={() => setDeleteAnnouncementId(announcement.id)}
+                  onEdit={() => {
+                    setIsCreateOpen(false);
+                    setEditingAnnouncementId(announcement.id);
+                  }}
+                  unhideAction={unhideAnnouncementAction}
+                />
+                <Card
+                  className="pt-16"
+                  title={announcement.title}
+                  description={`כיתה ${announcement.className ?? ""}`}
+                >
                   <div className="grid gap-3">
                     <div className="flex flex-wrap gap-2 text-sm font-semibold text-stone-700">
                       <span>
@@ -214,19 +187,9 @@ export function TeacherAnnouncementsPanel({
                     {announcement.readDetails ? (
                       <AnnouncementReadDetails details={announcement.readDetails} />
                     ) : null}
-                    <AnnouncementActions
-                      announcement={announcement}
-                      onDeleteRequest={() =>
-                        setDeleteAnnouncementId(announcement.id)
-                      }
-                      onEdit={() => {
-                        setIsCreateOpen(false);
-                        setEditingAnnouncementId(announcement.id);
-                      }}
-                    />
                   </div>
-                )}
-              </Card>
+                </Card>
+              </div>
             );
           })
         ) : (
