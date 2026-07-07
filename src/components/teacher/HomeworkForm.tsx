@@ -1,0 +1,154 @@
+"use client";
+
+import { formatDateTimeInput } from "@/components/homework/homeworkLabels";
+import type { ClassSummary, HomeworkAssignment } from "@/types";
+
+type HomeworkFormProps = {
+  action: (formData: FormData) => Promise<void>;
+  assignment?: HomeworkAssignment;
+  classes: ClassSummary[];
+  onCancel: () => void;
+};
+
+const controlClass =
+  "box-border min-h-11 w-full min-w-0 max-w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950";
+
+export function HomeworkForm({
+  action,
+  assignment,
+  classes,
+  onCancel,
+}: HomeworkFormProps) {
+  return (
+    <form action={action} className="grid min-w-0 gap-3" dir="rtl">
+      {assignment ? (
+        <input name="homeworkId" type="hidden" value={assignment.id} />
+      ) : null}
+
+      <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-700">
+        כיתה
+        <select
+          className={controlClass}
+          defaultValue={assignment?.classId ?? classes[0]?.id}
+          name="classId"
+          required
+        >
+          {classes.map((classSummary) => (
+            <option key={classSummary.id} value={classSummary.id}>
+              {classSummary.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-700">
+        כותרת
+        <input
+          className={controlClass}
+          defaultValue={assignment?.title}
+          name="title"
+          required
+          type="text"
+        />
+      </label>
+
+      <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-700">
+        מה צריך לעשות?
+        <textarea
+          className="box-border min-h-28 w-full min-w-0 max-w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm leading-6 text-stone-950"
+          defaultValue={assignment?.description}
+          name="description"
+          required
+        />
+      </label>
+
+      <div className="grid min-w-0 gap-3 md:grid-cols-2">
+        <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-700">
+          גלוי החל מ
+          <input
+            className={controlClass}
+            defaultValue={formatDateTimeInput(assignment?.visibleFrom)}
+            name="visibleFrom"
+            type="datetime-local"
+          />
+        </label>
+
+        <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-700">
+          להגשה עד
+          <input
+            className={controlClass}
+            defaultValue={formatDateTimeInput(assignment?.dueAt)}
+            name="dueAt"
+            type="datetime-local"
+          />
+        </label>
+      </div>
+
+      <div className="grid min-w-0 gap-2 rounded-md border border-stone-200 bg-stone-50 p-3 text-sm font-semibold text-stone-700">
+        <label className="flex min-h-11 items-center gap-2">
+          <input
+            className="size-4"
+            defaultChecked={assignment?.requireStatus ?? true}
+            name="requireStatus"
+            type="checkbox"
+          />
+          דרוש דיווח ביצוע
+        </label>
+        <label className="flex min-h-11 items-center gap-2">
+          <input
+            className="size-4"
+            defaultChecked={assignment?.requireUnderstanding ?? true}
+            name="requireUnderstanding"
+            type="checkbox"
+          />
+          דרוש דיווח הבנה
+        </label>
+        <label className="flex min-h-11 items-center gap-2">
+          <input
+            className="size-4"
+            defaultChecked={assignment?.requirePhoto ?? false}
+            name="requirePhoto"
+            type="checkbox"
+          />
+          דרוש צילום מחברת
+        </label>
+        <label className="flex min-h-11 items-center gap-2">
+          <input
+            className="size-4"
+            defaultChecked={assignment?.allowExternalUrl ?? false}
+            name="allowExternalUrl"
+            type="checkbox"
+          />
+          קישור חיצוני מותר
+        </label>
+      </div>
+
+      <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-700">
+        קישור חיצוני
+        <input
+          className={controlClass}
+          defaultValue={assignment?.externalUrl}
+          name="externalUrl"
+          placeholder="https://"
+          type="url"
+        />
+      </label>
+
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <button
+          className="min-h-11 rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-teal-800"
+          type="submit"
+        >
+          שמור
+        </button>
+        <button
+          className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-50"
+          onClick={onCancel}
+          type="button"
+        >
+          ביטול
+        </button>
+      </div>
+    </form>
+  );
+}

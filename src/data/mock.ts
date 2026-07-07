@@ -143,7 +143,7 @@ export const classSummaries: ClassSummary[] = [
   },
 ];
 
-export const homeworkAssignments: HomeworkAssignment[] = [
+export const homeworkAssignments = [
   {
     id: "homework-1",
     title: "תרגול שברים",
@@ -158,7 +158,7 @@ export const homeworkAssignments: HomeworkAssignment[] = [
     completedCount: 12,
     totalCount: 29,
   },
-];
+] as unknown as HomeworkAssignment[];
 
 export const announcements: Announcement[] = [
   {

@@ -1,6 +1,4 @@
 import { PageSection } from "@/components/app/PageSection";
-import { HomeworkSubmissionForm } from "@/components/homework/HomeworkSubmissionForm";
-import { PhotoUploader } from "@/components/homework/PhotoUploader";
 import { getStudentPracticeCards } from "@/lib/db/homework";
 
 export default function StudentPracticePage() {
@@ -14,8 +12,6 @@ export default function StudentPracticePage() {
         description="תרגולים קצרים ומותאמים לפי מצב הידע הנוכחי."
         cards={cards}
       />
-      <HomeworkSubmissionForm />
-      <PhotoUploader />
     </div>
   );
 }

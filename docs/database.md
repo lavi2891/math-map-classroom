@@ -193,6 +193,15 @@ Columns:
 
 Manage access is limited to class roles that can manage content.
 
+Current app usage:
+
+- Teachers with active `owner` or `teacher` membership in `class_memberships` can create and edit assignments for that class.
+- Student visibility currently means `visible_from <= now()`.
+- `due_at` is shown as the submission deadline. Overdue assignments are still visible and still accept submission updates for now.
+- `require_status`, `require_understanding`, and `require_photo` control which expectations are shown in the UI.
+- If `external_url` is filled, the app stores `allow_external_url = true`.
+- There is no effective `is_hidden` or `deleted_at` column on `homework_assignments`; the app does not show hide/delete controls for homework yet.
+
 ### `homework_submissions`
 
 Student homework submission state.
@@ -213,6 +222,13 @@ Unique constraint:
 
 - `(homework_id, student_id)`
 
+Current app usage:
+
+- Students submit or update their own row through an upsert on `(homework_id, student_id)`.
+- The app stores `submitted_at = now()` whenever the student submits or updates.
+- Teachers view submission summaries and per-student details for classes where they have active staff membership.
+- Summary denominators use active `student` memberships in `class_memberships`.
+
 ### `homework_files`
 
 Metadata for uploaded homework photos. Files live in Supabase Storage.
@@ -231,6 +247,11 @@ Storage bucket convention:
 
 - Bucket: `homework-submissions`
 - Path: `{student_id}/{homework_id}/{filename}`
+
+Current limitation:
+
+- Photo upload is not implemented in the homework workflow yet.
+- If `require_photo = true`, the student UI shows a notice that notebook photo upload will be added later.
 
 ### `knowledge_domains`
 

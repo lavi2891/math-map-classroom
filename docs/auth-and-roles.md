@@ -56,6 +56,8 @@ Teaching staff for a class. This role can:
 - View the class and class content.
 - Manage class content such as announcements and homework.
 - View announcement read-confirmation counts and details.
+- Create and edit homework assignments for the class.
+- View homework submission summaries and student submission details for the class.
 - View relevant student submissions and self assessments.
 
 This role does not replace class ownership.
@@ -75,7 +77,7 @@ Student membership in a class. This role can:
 
 - View the class and visible class content.
 - Mark themselves as read for announcements that require read confirmation.
-- Create and update their own homework submissions.
+- Create and update their own homework submissions with status, understanding, and optional note.
 - Create and update their own skill self assessments.
 - Create their own practice sessions.
 
@@ -165,6 +167,39 @@ Staff can view read counts for their classes. The denominator is active student 
 - `class_memberships.active = true`
 
 Staff read details are split into students who marked read and students who have not marked read.
+
+### Who can manage homework?
+
+Homework managers are active `owner` and `teacher` memberships in the assignment class.
+
+Managers can:
+
+- Create homework assignments.
+- Edit title, description, visibility date, due date, reporting requirements, photo requirement flag, and external URL.
+- View submission summaries and per-student submission details.
+
+Managers must be authorized through `class_memberships`. Do not use `profiles.role`, `classes.teacher_id`, `class_students`, a service role key, or any RLS bypass for homework management.
+
+Current homework limitations:
+
+- Homework hide/delete controls are not implemented because `homework_assignments` does not currently include `is_hidden` or `deleted_at`.
+- Photo upload is not implemented yet. The UI only displays a notice when `require_photo = true`.
+
+### Who can submit homework?
+
+Students can submit only for visible homework in classes where they have active `student` membership.
+
+The app upserts `homework_submissions` by:
+
+- `homework_id`
+- `student_id = auth.uid()`
+
+Students can update:
+
+- `status`
+- `understanding`
+- `note`
+- `submitted_at`
 
 ### Is this user the class owner?
 

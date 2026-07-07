@@ -1,80 +1,74 @@
 import { submitHomework } from "@/app/student/homework/actions";
+import {
+  homeworkStatusLabels,
+  understandingLabels,
+} from "@/components/homework/homeworkLabels";
+import type {
+  HomeworkStatus,
+  HomeworkSubmissionDetail,
+  UnderstandingLevel,
+} from "@/types";
 
 type HomeworkSubmissionFormProps = {
-  homeworkId?: string;
+  homeworkId: string;
+  submission?: HomeworkSubmissionDetail;
 };
 
-const statusOptions = [
-  { label: "לא התחלתי", value: "not_started" },
-  { label: "התחלתי", value: "started" },
-  { label: "סיימתי", value: "done" },
+const statusOptions: HomeworkStatus[] = ["not_started", "started", "done"];
+const understandingOptions: UnderstandingLevel[] = [
+  "good",
+  "partial",
+  "no",
+  "unknown",
 ];
 
-const understandingOptions = [
-  { label: "הבנתי", value: "good" },
-  { label: "חלקית", value: "partial" },
-  { label: "לא הבנתי", value: "no" },
-  { label: "לא בטוח/ה", value: "unknown" },
-];
+const controlClass =
+  "box-border min-h-11 w-full min-w-0 max-w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-base text-stone-950";
 
 export function HomeworkSubmissionForm({
   homeworkId,
+  submission,
 }: HomeworkSubmissionFormProps) {
-  if (!homeworkId) {
-    return null;
-  }
-
   return (
-    <form action={submitHomework} className="grid gap-3">
+    <form action={submitHomework} className="grid min-w-0 gap-3" dir="rtl">
       <input name="homeworkId" type="hidden" value={homeworkId} />
 
-      <label className="grid gap-1 text-sm font-semibold text-stone-700">
-        מצב עבודה
+      <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-700">
+        מצב ביצוע
         <select
-          className="min-h-11 rounded-md border border-stone-200 bg-white px-3 text-base text-stone-950"
-          defaultValue="not_started"
+          className={controlClass}
+          defaultValue={submission?.status ?? "not_started"}
           name="status"
         >
-          {statusOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
+          {statusOptions.map((status) => (
+            <option key={status} value={status}>
+              {homeworkStatusLabels[status]}
             </option>
           ))}
         </select>
       </label>
 
-      <label className="grid gap-1 text-sm font-semibold text-stone-700">
-        הבנה
+      <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-700">
+        איך הבנתי?
         <select
-          className="min-h-11 rounded-md border border-stone-200 bg-white px-3 text-base text-stone-950"
-          defaultValue="unknown"
+          className={controlClass}
+          defaultValue={submission?.understanding ?? "unknown"}
           name="understanding"
         >
-          {understandingOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
+          {understandingOptions.map((level) => (
+            <option key={level} value={level}>
+              {understandingLabels[level]}
             </option>
           ))}
         </select>
       </label>
 
-      <label className="grid gap-1 text-sm font-semibold text-stone-700">
-        הערה
+      <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-700">
+        הערה למורה
         <textarea
-          className="min-h-24 rounded-md border border-stone-200 bg-white px-3 py-2 text-base text-stone-950"
+          className="box-border min-h-24 w-full min-w-0 max-w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-base text-stone-950"
+          defaultValue={submission?.note}
           name="note"
-          placeholder="אפשר לכתוב מה היה קל או קשה"
-        />
-      </label>
-
-      <label className="grid gap-1 text-sm font-semibold text-stone-700">
-        צילום מחברת
-        <input
-          accept="image/*"
-          capture="environment"
-          className="min-h-11 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950"
-          name="photo"
-          type="file"
         />
       </label>
 
@@ -82,7 +76,7 @@ export function HomeworkSubmissionForm({
         className="min-h-11 rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-teal-800"
         type="submit"
       >
-        שמירת הגשה
+        {submission?.id ? "עדכן הגשה" : "שלח הגשה"}
       </button>
     </form>
   );

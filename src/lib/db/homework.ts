@@ -1,36 +1,53 @@
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { getStudentClasses } from "@/lib/db/classes";
-import { getCurrentUserManageableMemberships } from "@/lib/db/memberships";
+import {
+  getCurrentUserManageableMemberships,
+  getCurrentUserStudentMemberships,
+} from "@/lib/db/memberships";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type {
   AppCard,
+  ClassSummary,
   HomeworkAssignment,
-  HomeworkFile,
   HomeworkStatus,
+  HomeworkSubmissionDetail,
   HomeworkSubmissionSummary,
   UnderstandingLevel,
 } from "@/types";
 
-const HOMEWORK_BUCKET = "homework-submissions";
-const SIGNED_URL_SECONDS = 60 * 10;
+export type HomeworkAssignmentInput = {
+  allowExternalUrl: boolean;
+  classId: string;
+  description: string;
+  dueAt?: string;
+  externalUrl?: string;
+  requirePhoto: boolean;
+  requireStatus: boolean;
+  requireUnderstanding: boolean;
+  title: string;
+  visibleFrom?: string;
+};
+
+export type HomeworkSubmissionInput = {
+  homeworkId: string;
+  note?: string;
+  status: HomeworkStatus;
+  understanding: UnderstandingLevel;
+};
 
 type HomeworkRow = {
+  allow_external_url: boolean | null;
   class_id: string;
   classes: { name: string } | { name: string }[] | null;
   description: string;
   due_at: string | null;
+  external_url: string | null;
   id: string;
+  require_photo: boolean | null;
+  require_status: boolean | null;
+  require_understanding: boolean | null;
   title: string;
   visible_from: string;
-};
-
-type HomeworkFileRow = {
-  file_name: string | null;
-  file_path: string;
-  id: string;
-  mime_type: string | null;
-  size_bytes: number | null;
-  submission_id: string;
 };
 
 type HomeworkSubmissionRow = {
@@ -47,22 +64,46 @@ type HomeworkSubmissionRow = {
   understanding: UnderstandingLevel;
 };
 
-type HomeworkSummary = {
-  doneCount: number;
-  noUnderstandingCount: number;
-  partialUnderstandingCount: number;
-  submissionCount: number;
+type MembershipStudentRow = {
+  class_id: string;
+  profiles:
+    | { display_name: string | null; username: string | null }
+    | { display_name: string | null; username: string | null }[]
+    | null;
+  student_code: string | null;
+  user_id: string;
 };
 
-function getClassName(row: HomeworkRow) {
-  const joinedClass = Array.isArray(row.classes) ? row.classes[0] : row.classes;
+type ClassRow = {
+  class_code: string;
+  grade: number;
+  id: string;
+  name: string;
+};
 
-  return joinedClass?.name;
+type MembershipClassRow = {
+  class_id: string;
+  role: string;
+  classes: ClassRow | ClassRow[] | null;
+};
+
+function getJoined<T>(value: T | T[] | null) {
+  return Array.isArray(value) ? value[0] : value;
 }
 
-function formatDueDate(value: string | null) {
+function getClassName(row: HomeworkRow) {
+  return getJoined(row.classes)?.name;
+}
+
+function getStudentName(row: MembershipStudentRow | HomeworkSubmissionRow) {
+  const profile = getJoined(row.profiles);
+
+  return profile?.display_name ?? profile?.username ?? "תלמיד/ה";
+}
+
+function formatDateTime(value?: string) {
   if (!value) {
-    return "אין תאריך הגשה";
+    return "אין תאריך";
   }
 
   return new Intl.DateTimeFormat("he-IL", {
@@ -71,82 +112,168 @@ function formatDueDate(value: string | null) {
   }).format(new Date(value));
 }
 
-function emptySummary(): HomeworkSummary {
+function emptySummary(totalStudentCount = 0): HomeworkSubmissionSummary {
   return {
     doneCount: 0,
+    goodUnderstandingCount: 0,
     noUnderstandingCount: 0,
+    notStartedCount: 0,
     partialUnderstandingCount: 0,
-    submissionCount: 0,
+    startedCount: 0,
+    submittedCount: 0,
+    totalStudentCount,
   };
 }
 
-function emptySubmissionMap() {
-  return new Map<string, HomeworkSubmissionSummary[]>();
+function toClassSummary(row: MembershipClassRow, studentCount = 0): ClassSummary[] {
+  const classRow = getJoined(row.classes);
+
+  if (!classRow) {
+    return [];
+  }
+
+  return [
+    {
+      classCode: classRow.class_code,
+      grade: classRow.grade,
+      id: classRow.id,
+      name: classRow.name,
+      role: row.role,
+      studentCount,
+    },
+  ];
 }
 
-async function createSignedUrl(filePath: string) {
-  const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.storage
-    .from(HOMEWORK_BUCKET)
-    .createSignedUrl(filePath, SIGNED_URL_SECONDS);
-
-  return data?.signedUrl;
-}
-
-async function toHomeworkFile(row: HomeworkFileRow): Promise<HomeworkFile> {
+function toSubmissionDetail(row: HomeworkSubmissionRow): HomeworkSubmissionDetail {
   return {
-    fileName: row.file_name ?? undefined,
-    filePath: row.file_path,
     id: row.id,
-    mimeType: row.mime_type ?? undefined,
-    signedUrl: await createSignedUrl(row.file_path),
-    sizeBytes: row.size_bytes ?? undefined,
+    note: row.note ?? undefined,
+    status: row.status,
+    studentId: row.student_id,
+    studentName: getStudentName(row),
+    submittedAt: row.submitted_at ?? undefined,
+    understanding: row.understanding,
   };
 }
 
-async function getFilesBySubmissionIds(submissionIds: string[]) {
-  const filesBySubmission = new Map<string, HomeworkFile[]>();
+function summarize(details: HomeworkSubmissionDetail[], totalStudentCount: number) {
+  return details.reduce<HomeworkSubmissionSummary>((summary, detail) => {
+    if (detail.id) {
+      summary.submittedCount += 1;
+    }
 
-  if (submissionIds.length === 0) {
-    return filesBySubmission;
+    if (detail.status === "done") {
+      summary.doneCount += 1;
+    }
+
+    if (detail.status === "started") {
+      summary.startedCount += 1;
+    }
+
+    if (detail.status === "not_started") {
+      summary.notStartedCount += 1;
+    }
+
+    if (detail.understanding === "good") {
+      summary.goodUnderstandingCount += 1;
+    }
+
+    if (detail.understanding === "partial") {
+      summary.partialUnderstandingCount += 1;
+    }
+
+    if (detail.understanding === "no") {
+      summary.noUnderstandingCount += 1;
+    }
+
+    return summary;
+  }, emptySummary(totalStudentCount));
+}
+
+function toHomeworkAssignment(
+  row: HomeworkRow,
+  submissionDetails: HomeworkSubmissionDetail[],
+  submission?: HomeworkSubmissionDetail,
+): HomeworkAssignment {
+  const totalStudentCount = submissionDetails.length;
+  const dueAt = row.due_at ?? undefined;
+
+  return {
+    allowExternalUrl: row.allow_external_url ?? false,
+    classId: row.class_id,
+    className: getClassName(row),
+    description: row.description,
+    dueAt,
+    dueDate: dueAt ? formatDateTime(dueAt) : undefined,
+    externalUrl: row.external_url ?? undefined,
+    id: row.id,
+    isOverdue: dueAt ? Date.parse(dueAt) < Date.now() : false,
+    requirePhoto: row.require_photo ?? false,
+    requireStatus: row.require_status ?? true,
+    requireUnderstanding: row.require_understanding ?? true,
+    submission,
+    submissionDetails,
+    submissionSummary: summarize(submissionDetails, totalStudentCount),
+    title: row.title,
+    visibleFrom: row.visible_from,
+  };
+}
+
+async function getActiveStudentCounts(classIds: string[]) {
+  const counts = new Map<string, number>();
+
+  await Promise.all(
+    classIds.map(async (classId) => {
+      const supabase = await createSupabaseServerClient();
+      const { count } = await supabase
+        .from("class_memberships")
+        .select("user_id", { count: "exact", head: true })
+        .eq("class_id", classId)
+        .eq("role", "student")
+        .eq("active", true);
+
+      counts.set(classId, count ?? 0);
+    }),
+  );
+
+  return counts;
+}
+
+async function getActiveStudentsByClassIds(classIds: string[]) {
+  const studentsByClass = new Map<string, HomeworkSubmissionDetail[]>();
+
+  if (classIds.length === 0) {
+    return studentsByClass;
   }
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
-    .from("homework_files")
-    .select("id, submission_id, file_path, file_name, mime_type, size_bytes")
-    .in("submission_id", submissionIds)
-    .order("created_at", { ascending: false });
+    .from("class_memberships")
+    .select("class_id, user_id, student_code, profiles(display_name, username)")
+    .eq("role", "student")
+    .eq("active", true)
+    .in("class_id", classIds)
+    .order("student_code", { ascending: true });
 
   if (error || !data) {
-    return filesBySubmission;
+    return studentsByClass;
   }
 
-  await Promise.all(
-    (data as HomeworkFileRow[]).map(async (row) => {
-      const files = filesBySubmission.get(row.submission_id) ?? [];
-      files.push(await toHomeworkFile(row));
-      filesBySubmission.set(row.submission_id, files);
-    }),
-  );
+  (data as unknown as MembershipStudentRow[]).forEach((row) => {
+    const students = studentsByClass.get(row.class_id) ?? [];
+    const name = getStudentName(row);
+    students.push({
+      studentId: row.user_id,
+      studentName: row.student_code ? `${name} (${row.student_code})` : name,
+    });
+    studentsByClass.set(row.class_id, students);
+  });
 
-  return filesBySubmission;
-}
-
-function getStudentName(submission: HomeworkSubmissionRow) {
-  const profile = Array.isArray(submission.profiles)
-    ? submission.profiles[0]
-    : submission.profiles;
-
-  return (
-    profile?.display_name ??
-    profile?.username ??
-    "תלמיד/ה"
-  );
+  return studentsByClass;
 }
 
 async function getSubmissionsByHomeworkIds(homeworkIds: string[]) {
-  const submissionsByHomework = emptySubmissionMap();
+  const submissionsByHomework = new Map<string, HomeworkSubmissionDetail[]>();
 
   if (homeworkIds.length === 0) {
     return submissionsByHomework;
@@ -165,165 +292,133 @@ async function getSubmissionsByHomeworkIds(homeworkIds: string[]) {
     return submissionsByHomework;
   }
 
-  const rows = data as unknown as HomeworkSubmissionRow[];
-  const filesBySubmission = await getFilesBySubmissionIds(
-    rows.map((submission) => submission.id),
-  );
-
-  rows.forEach((submission) => {
-    const submissions = submissionsByHomework.get(submission.homework_id) ?? [];
-    submissions.push({
-      files: filesBySubmission.get(submission.id) ?? [],
-      id: submission.id,
-      note: submission.note ?? undefined,
-      status: submission.status,
-      studentId: submission.student_id,
-      studentName: getStudentName(submission),
-      submittedAt: submission.submitted_at ?? undefined,
-      understanding: submission.understanding,
-    });
-    submissionsByHomework.set(submission.homework_id, submissions);
+  (data as unknown as HomeworkSubmissionRow[]).forEach((row) => {
+    const submissions = submissionsByHomework.get(row.homework_id) ?? [];
+    submissions.push(toSubmissionDetail(row));
+    submissionsByHomework.set(row.homework_id, submissions);
   });
 
   return submissionsByHomework;
 }
 
-async function getCurrentStudentFilesByHomeworkIds(homeworkIds: string[]) {
-  const filesByHomework = new Map<string, HomeworkFile[]>();
-  const user = await getCurrentUser();
-
-  if (!user || homeworkIds.length === 0) {
-    return filesByHomework;
-  }
-
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("homework_submissions")
-    .select("id, homework_id")
-    .eq("student_id", user.id)
-    .in("homework_id", homeworkIds);
-
-  if (error || !data) {
-    return filesByHomework;
-  }
-
-  const submissions = data as { homework_id: string; id: string }[];
-  const filesBySubmission = await getFilesBySubmissionIds(
-    submissions.map((submission) => submission.id),
+function mergeStudentSubmissionDetails(
+  students: HomeworkSubmissionDetail[],
+  submissions: HomeworkSubmissionDetail[],
+) {
+  const submissionsByStudent = new Map(
+    submissions.map((submission) => [submission.studentId, submission]),
   );
 
-  submissions.forEach((submission) => {
-    filesByHomework.set(
-      submission.homework_id,
-      filesBySubmission.get(submission.id) ?? [],
-    );
-  });
-
-  return filesByHomework;
+  return students.map((student) => ({
+    ...student,
+    ...submissionsByStudent.get(student.studentId),
+    studentName: student.studentName,
+  }));
 }
 
-function getSubmissionSummary(
-  submissions: HomeworkSubmissionSummary[],
-): HomeworkSummary {
-  return submissions.reduce<HomeworkSummary>((summary, submission) => {
-    summary.submissionCount += 1;
-
-    if (submission.status === "done") {
-      summary.doneCount += 1;
-    }
-
-    if (submission.understanding === "partial") {
-      summary.partialUnderstandingCount += 1;
-    }
-
-    if (submission.understanding === "no") {
-      summary.noUnderstandingCount += 1;
-    }
-
-    return summary;
-  }, emptySummary());
-}
-
-function toHomework(
-  row: HomeworkRow,
-  submissions: HomeworkSubmissionSummary[],
-  files: HomeworkFile[],
-): HomeworkAssignment {
-  const summary = getSubmissionSummary(submissions);
-
-  return {
-    classId: row.class_id,
-    className: getClassName(row),
-    completedCount: summary.doneCount,
-    description: row.description,
-    doneCount: summary.doneCount,
-    dueDate: formatDueDate(row.due_at),
-    files,
-    id: row.id,
-    noUnderstandingCount: summary.noUnderstandingCount,
-    partialUnderstandingCount: summary.partialUnderstandingCount,
-    submissionCount: summary.submissionCount,
-    submissions,
-    title: row.title,
-    totalCount: summary.submissionCount,
-  };
-}
-
-async function getHomeworkRows(classIds?: string[]) {
-  if (classIds && classIds.length === 0) {
+async function getHomeworkRows(classIds: string[], visibleOnly: boolean) {
+  if (classIds.length === 0) {
     return [];
   }
 
   const supabase = await createSupabaseServerClient();
   let query = supabase
     .from("homework_assignments")
-    .select("id, class_id, title, description, visible_from, due_at, classes(name)")
-    .lte("visible_from", new Date().toISOString())
+    .select(
+      "id, class_id, title, description, visible_from, due_at, require_status, require_understanding, require_photo, allow_external_url, external_url, classes(name)",
+    )
+    .in("class_id", classIds)
     .order("visible_from", { ascending: false });
 
-  if (classIds && classIds.length > 0) {
-    query = query.in("class_id", classIds);
+  if (visibleOnly) {
+    query = query.lte("visible_from", new Date().toISOString());
   }
 
-  const { data, error } = await query.limit(30);
+  const { data, error } = await query.limit(100);
 
   if (error || !data) {
     return [];
   }
 
-  const now = Date.now();
-
-  return (data as HomeworkRow[]).filter(
-    (assignment) => !assignment.due_at || Date.parse(assignment.due_at) >= now,
-  );
+  return data as unknown as HomeworkRow[];
 }
 
-export async function getHomeworkAssignments(classIds?: string[]) {
-  const rows = await getHomeworkRows(classIds);
-  const submissionsByHomework = await getSubmissionsByHomeworkIds(
-    rows.map((assignment) => assignment.id),
-  );
+export async function getManageableHomeworkClasses() {
+  const memberships = await getCurrentUserManageableMemberships();
 
-  return rows.map((row) =>
-    toHomework(row, submissionsByHomework.get(row.id) ?? [], []),
+  if (memberships.length === 0) {
+    return [];
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const classIds = memberships.map((membership) => membership.classId);
+  const { data, error } = await supabase
+    .from("class_memberships")
+    .select("class_id, role, classes(id, name, grade, class_code)")
+    .in("class_id", classIds)
+    .eq("active", true);
+
+  if (error || !data) {
+    return [];
+  }
+
+  const studentCounts = await getActiveStudentCounts(classIds);
+
+  return (data as unknown as MembershipClassRow[]).flatMap((row) => {
+    const membership = memberships.find(
+      (item) => item.classId === row.class_id && item.role === row.role,
+    );
+
+    return membership ? toClassSummary(row, studentCounts.get(row.class_id)) : [];
+  });
+}
+
+export async function getTeacherHomeworkAssignments() {
+  const classes = await getManageableHomeworkClasses();
+  const rows = await getHomeworkRows(
+    classes.map((classSummary) => classSummary.id),
+    false,
   );
+  const [studentsByClass, submissionsByHomework] = await Promise.all([
+    getActiveStudentsByClassIds([...new Set(rows.map((row) => row.class_id))]),
+    getSubmissionsByHomeworkIds(rows.map((row) => row.id)),
+  ]);
+
+  return rows.map((row) => {
+    const details = mergeStudentSubmissionDetails(
+      studentsByClass.get(row.class_id) ?? [],
+      submissionsByHomework.get(row.id) ?? [],
+    );
+
+    return toHomeworkAssignment(row, details);
+  });
 }
 
 export async function getStudentHomeworkAssignments(classIds?: string[]) {
-  const rows = await getHomeworkRows(classIds);
-  const filesByHomework = await getCurrentStudentFilesByHomeworkIds(
-    rows.map((assignment) => assignment.id),
+  const memberships = await getCurrentUserStudentMemberships();
+  const membershipClassIds = memberships.map((membership) => membership.classId);
+  const allowedClassIds = classIds
+    ? classIds.filter((classId) => membershipClassIds.includes(classId))
+    : membershipClassIds;
+  const rows = await getHomeworkRows(allowedClassIds, true);
+  const submissionsByHomework = await getSubmissionsByHomeworkIds(
+    rows.map((row) => row.id),
   );
+  const user = await getCurrentUser();
 
-  return rows.map((row) => toHomework(row, [], filesByHomework.get(row.id) ?? []));
+  return rows.map((row) => {
+    const submission = user
+      ? submissionsByHomework
+          .get(row.id)
+          ?.find((item) => item.studentId === user.id)
+      : undefined;
+
+    return toHomeworkAssignment(row, [], submission);
+  });
 }
 
 export async function getManageableHomeworkAssignments() {
-  const memberships = await getCurrentUserManageableMemberships();
-
-  return getHomeworkAssignments(
-    memberships.map((membership) => membership.classId),
-  );
+  return getTeacherHomeworkAssignments();
 }
 
 export async function getOpenStudentHomework(limit = 5) {
@@ -333,6 +428,90 @@ export async function getOpenStudentHomework(limit = 5) {
   );
 
   return homework.slice(0, limit);
+}
+
+export async function createHomeworkAssignment(input: HomeworkAssignmentInput) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return;
+  }
+
+  const manageableClassIds = (await getCurrentUserManageableMemberships()).map(
+    (membership) => membership.classId,
+  );
+
+  if (!manageableClassIds.includes(input.classId)) {
+    return;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  await supabase.from("homework_assignments").insert({
+    allow_external_url: input.allowExternalUrl,
+    class_id: input.classId,
+    created_by: user.id,
+    description: input.description,
+    due_at: input.dueAt || null,
+    external_url: input.externalUrl || null,
+    require_photo: input.requirePhoto,
+    require_status: input.requireStatus,
+    require_understanding: input.requireUnderstanding,
+    title: input.title,
+    visible_from: input.visibleFrom ?? new Date().toISOString(),
+  });
+}
+
+export async function updateHomeworkAssignment(
+  id: string,
+  input: HomeworkAssignmentInput,
+) {
+  const manageableClassIds = (await getCurrentUserManageableMemberships()).map(
+    (membership) => membership.classId,
+  );
+
+  if (!manageableClassIds.includes(input.classId)) {
+    return;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  await supabase
+    .from("homework_assignments")
+    .update({
+      allow_external_url: input.allowExternalUrl,
+      class_id: input.classId,
+      description: input.description,
+      due_at: input.dueAt || null,
+      external_url: input.externalUrl || null,
+      require_photo: input.requirePhoto,
+      require_status: input.requireStatus,
+      require_understanding: input.requireUnderstanding,
+      title: input.title,
+      visible_from: input.visibleFrom ?? new Date().toISOString(),
+    })
+    .eq("id", id);
+}
+
+export async function upsertHomeworkSubmission(input: HomeworkSubmissionInput) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  await supabase.from("homework_submissions").upsert(
+    {
+      homework_id: input.homeworkId,
+      note: input.note || null,
+      status: input.status,
+      student_id: user.id,
+      submitted_at: new Date().toISOString(),
+      understanding: input.understanding,
+    },
+    {
+      onConflict: "homework_id,student_id",
+    },
+  );
 }
 
 export function getStudentPracticeCards(): AppCard[] {

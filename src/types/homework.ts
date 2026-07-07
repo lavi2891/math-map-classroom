@@ -2,39 +2,43 @@ export type HomeworkStatus = "not_started" | "started" | "done";
 
 export type UnderstandingLevel = "good" | "partial" | "no" | "unknown";
 
-export type HomeworkFile = {
-  id: string;
-  filePath: string;
-  fileName?: string;
-  mimeType?: string;
-  sizeBytes?: number;
-  signedUrl?: string;
+export type HomeworkSubmissionSummary = {
+  doneCount: number;
+  goodUnderstandingCount: number;
+  noUnderstandingCount: number;
+  notStartedCount: number;
+  partialUnderstandingCount: number;
+  startedCount: number;
+  submittedCount: number;
+  totalStudentCount: number;
 };
 
-export type HomeworkSubmissionSummary = {
-  id: string;
+export type HomeworkSubmissionDetail = {
+  id?: string;
+  note?: string;
+  status?: HomeworkStatus;
   studentId: string;
   studentName: string;
-  status: HomeworkStatus;
-  understanding: UnderstandingLevel;
-  note?: string;
   submittedAt?: string;
-  files: HomeworkFile[];
+  understanding?: UnderstandingLevel;
 };
 
 export type HomeworkAssignment = {
   id: string;
-  classId?: string;
+  allowExternalUrl: boolean;
+  classId: string;
   className?: string;
-  title: string;
-  description?: string;
+  description: string;
+  dueAt?: string;
   dueDate?: string;
-  completedCount: number;
-  doneCount?: number;
-  files?: HomeworkFile[];
-  noUnderstandingCount?: number;
-  partialUnderstandingCount?: number;
-  submissionCount?: number;
-  submissions?: HomeworkSubmissionSummary[];
-  totalCount: number;
+  externalUrl?: string;
+  isOverdue: boolean;
+  requirePhoto: boolean;
+  requireStatus: boolean;
+  requireUnderstanding: boolean;
+  submission?: HomeworkSubmissionDetail;
+  submissionDetails?: HomeworkSubmissionDetail[];
+  submissionSummary: HomeworkSubmissionSummary;
+  title: string;
+  visibleFrom: string;
 };
