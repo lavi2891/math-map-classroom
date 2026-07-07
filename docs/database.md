@@ -185,8 +185,8 @@ Columns:
 - `description text`
 - `visible_from timestamptz`
 - `due_at timestamptz`
-- `allow_late_submission boolean`
-- `late_submission_until timestamptz`
+- `allow_late_submission boolean not null default true` - whether students can submit or update after `due_at`.
+- `late_submission_until timestamptz null` - optional final cutoff for late submissions; `null` means late submissions remain allowed when `allow_late_submission = true`.
 - `require_status boolean`
 - `require_understanding boolean`
 - `require_photo boolean`
@@ -211,6 +211,7 @@ Current app usage:
 - Staff can see non-deleted homework in their classes, including hidden homework.
 - Student visibility means `deleted_at is null`, `is_hidden = false`, and `visible_from <= now()`.
 - `due_at` is shown as the submission deadline. Overdue assignments remain visible, but submission/update is allowed only when `allow_late_submission = true` and either `late_submission_until is null` or `late_submission_until >= now()`.
+- If `allow_late_submission = false`, students cannot submit or update after `due_at`.
 - `require_status`, `require_understanding`, and `require_photo` control which expectations are shown in the UI.
 - If `external_url` is filled, the app stores `allow_external_url = true`.
 - Default app list limits: student visible announcements 10, student open homework 10, student homework history 30, teacher announcements 20, and teacher homework 20.
