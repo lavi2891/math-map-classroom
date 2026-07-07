@@ -48,6 +48,8 @@ export async function submitHomework(
   const status = getString(formData, "status");
   const understanding = getString(formData, "understanding");
   const note = getString(formData, "note");
+  const hasSelectedPhotoUpload =
+    getString(formData, "hasSelectedPhotoUpload") === "true";
 
   if (
     !homeworkId ||
@@ -61,6 +63,7 @@ export async function submitHomework(
   }
 
   const result = await upsertHomeworkSubmission({
+    hasSelectedPhotoUpload,
     homeworkId,
     note,
     status,
@@ -69,7 +72,7 @@ export async function submitHomework(
 
   if (!result.success) {
     return {
-      error: "לא הצלחנו לשמור את ההגשה.",
+      error: result.errorMessage ?? "לא הצלחנו לשמור את ההגשה.",
       success: false,
     };
   }
@@ -102,7 +105,8 @@ export async function deleteHomeworkFileAction(
 
   if (!result.success) {
     return {
-      error: "לא הצלחנו להסיר את הצילום. נסה שוב.",
+      error:
+        result.errorMessage ?? "לא הצלחנו להסיר את הצילום. נסה שוב.",
       success: false,
     };
   }

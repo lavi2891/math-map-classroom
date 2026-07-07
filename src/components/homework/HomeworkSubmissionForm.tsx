@@ -155,9 +155,17 @@ export function HomeworkSubmissionForm({
   }, [files, homeworkId, onSuccess, router, state]);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    if (requirePhoto && existingFiles.length === 0 && files.length === 0) {
+    const formData = new FormData(event.currentTarget);
+    const status = formData.get("status");
+
+    if (
+      requirePhoto &&
+      status === "done" &&
+      existingFiles.length === 0 &&
+      files.length === 0
+    ) {
       event.preventDefault();
-      setFileError("המורה ביקש לצרף צילום של העבודה.");
+      setFileError("כדי לסמן שסיימת, צריך לצרף צילום מחברת.");
     }
   }
 
@@ -171,6 +179,11 @@ export function HomeworkSubmissionForm({
       onSubmit={handleSubmit}
     >
       <input name="homeworkId" type="hidden" value={homeworkId} />
+      <input
+        name="hasSelectedPhotoUpload"
+        type="hidden"
+        value={files.length > 0 ? "true" : "false"}
+      />
 
       <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-700">
         מצב ביצוע
@@ -220,7 +233,13 @@ export function HomeworkSubmissionForm({
           error={fileError}
           files={files}
           onError={setFileError}
-          onFilesChange={setFiles}
+          onFilesChange={(nextFiles) => {
+            setFiles(nextFiles);
+
+            if (nextFiles.length > 0) {
+              setFileError(undefined);
+            }
+          }}
           required
         />
       ) : null}

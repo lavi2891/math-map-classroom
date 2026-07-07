@@ -30,6 +30,10 @@ export function StudentHomeworkCard({
       return <StatusBadge tone="success">צורף צילום</StatusBadge>;
     }
 
+    if (assignment.requirePhoto && submission?.status === "started") {
+      return <StatusBadge tone="warning">נדרש צילום לסיום</StatusBadge>;
+    }
+
     if (assignment.requirePhoto) {
       return <StatusBadge tone="warning">נדרש צילום</StatusBadge>;
     }

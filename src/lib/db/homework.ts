@@ -30,6 +30,7 @@ export type HomeworkAssignmentInput = {
 };
 
 export type HomeworkSubmissionInput = {
+  hasSelectedPhotoUpload?: boolean;
   homeworkId: string;
   note?: string;
   status: HomeworkStatus;
@@ -90,8 +91,24 @@ type HomeworkFileRow = {
 
 type HomeworkFileOwnerRow = HomeworkFileRow & {
   homework_submissions:
-    | { student_id: string }
-    | { student_id: string }[]
+    | {
+        homework_assignments:
+          | { require_photo: boolean | null }
+          | { require_photo: boolean | null }[]
+          | null;
+        id: string;
+        status: HomeworkStatus;
+        student_id: string;
+      }
+    | {
+        homework_assignments:
+          | { require_photo: boolean | null }
+          | { require_photo: boolean | null }[]
+          | null;
+        id: string;
+        status: HomeworkStatus;
+        student_id: string;
+      }[]
     | null;
 };
 
@@ -117,6 +134,11 @@ type MembershipClassRow = {
   role: string;
   classes: ClassRow | ClassRow[] | null;
 };
+
+const PHOTO_REQUIRED_DONE_ERROR =
+  "כדי לסמן שסיימת, צריך לצרף צילום מחברת.";
+const LAST_REQUIRED_PHOTO_DELETE_ERROR =
+  "אי אפשר להסיר את הצילום האחרון כשההגשה מסומנת כסיימתי.";
 
 function getJoined<T>(value: T | T[] | null) {
   return Array.isArray(value) ? value[0] : value;
@@ -423,7 +445,7 @@ export async function deleteHomeworkFile(fileId: string) {
   const { data, error } = await supabase
     .from("homework_files")
     .select(
-      "id, submission_id, file_path, file_name, mime_type, size_bytes, homework_submissions!inner(student_id)",
+      "id, submission_id, file_path, file_name, mime_type, size_bytes, homework_submissions!inner(id, student_id, status, homework_assignments!inner(require_photo))",
     )
     .eq("id", fileId)
     .maybeSingle();
@@ -458,6 +480,41 @@ export async function deleteHomeworkFile(fileId: string) {
     });
 
     return { success: false };
+  }
+
+  const assignment = Array.isArray(submission.homework_assignments)
+    ? submission.homework_assignments[0]
+    : submission.homework_assignments;
+
+  if (submission.status === "done" && assignment?.require_photo) {
+    const { count, error: countError } = await supabase
+      .from("homework_files")
+      .select("id", { count: "exact", head: true })
+      .eq("submission_id", row.submission_id);
+
+    if (countError) {
+      console.error("deleteHomeworkFile count failed", {
+        error: {
+          code: countError.code,
+          details: countError.details,
+          hint: countError.hint,
+          message: countError.message,
+        },
+        payload: {
+          file_id: fileId,
+          submission_id: row.submission_id,
+        },
+      });
+
+      return { success: false };
+    }
+
+    if ((count ?? 0) <= 1) {
+      return {
+        errorMessage: LAST_REQUIRED_PHOTO_DELETE_ERROR,
+        success: false,
+      };
+    }
   }
 
   const { error: storageError } = await supabase.storage
@@ -820,6 +877,105 @@ export async function upsertHomeworkSubmission(input: HomeworkSubmissionInput) {
   }
 
   const supabase = await createSupabaseServerClient();
+
+  if (input.status === "done") {
+    const { data: assignment, error: assignmentError } = await supabase
+      .from("homework_assignments")
+      .select("id, require_photo")
+      .eq("id", input.homeworkId)
+      .maybeSingle();
+
+    if (assignmentError || !assignment) {
+      if (assignmentError) {
+        console.error("upsertHomeworkSubmission assignment check failed", {
+          error: {
+            code: assignmentError.code,
+            details: assignmentError.details,
+            hint: assignmentError.hint,
+            message: assignmentError.message,
+          },
+          payload: {
+            homework_id: input.homeworkId,
+            student_id: user.id,
+          },
+        });
+      }
+
+      return {
+        errorMessage: assignmentError?.message,
+        success: false,
+      };
+    }
+
+    if (assignment.require_photo && !input.hasSelectedPhotoUpload) {
+      const { data: existingSubmission, error: submissionError } = await supabase
+        .from("homework_submissions")
+        .select("id")
+        .eq("homework_id", input.homeworkId)
+        .eq("student_id", user.id)
+        .maybeSingle();
+
+      if (submissionError) {
+        console.error("upsertHomeworkSubmission submission check failed", {
+          error: {
+            code: submissionError.code,
+            details: submissionError.details,
+            hint: submissionError.hint,
+            message: submissionError.message,
+          },
+          payload: {
+            homework_id: input.homeworkId,
+            student_id: user.id,
+          },
+        });
+
+        return {
+          errorMessage: submissionError.message,
+          success: false,
+        };
+      }
+
+      let fileCount = 0;
+
+      if (existingSubmission?.id) {
+        const { count, error: fileCountError } = await supabase
+          .from("homework_files")
+          .select("id", { count: "exact", head: true })
+          .eq("submission_id", existingSubmission.id);
+
+        if (fileCountError) {
+          console.error("upsertHomeworkSubmission file count failed", {
+            error: {
+              code: fileCountError.code,
+              details: fileCountError.details,
+              hint: fileCountError.hint,
+              message: fileCountError.message,
+            },
+            payload: {
+              homework_id: input.homeworkId,
+              student_id: user.id,
+              submission_id: existingSubmission.id,
+            },
+          });
+
+          return {
+            errorMessage: fileCountError.message,
+            success: false,
+          };
+        }
+
+        fileCount = count ?? 0;
+      }
+
+      if (fileCount === 0) {
+        return {
+          errorMessage: PHOTO_REQUIRED_DONE_ERROR,
+          success: false,
+        };
+      }
+    }
+  }
+
   const { data, error } = await supabase
     .from("homework_submissions")
     .upsert(
