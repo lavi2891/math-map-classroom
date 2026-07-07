@@ -7,6 +7,8 @@ export type {
 export type { ClassFeedItem, ClassSummary } from "./classes";
 export type {
   HomeworkAssignment,
+  HomeworkFile,
+  HomeworkSubmissionSummary,
   HomeworkStatus,
   UnderstandingLevel,
 } from "./homework";

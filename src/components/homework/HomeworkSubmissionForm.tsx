@@ -67,6 +67,17 @@ export function HomeworkSubmissionForm({
         />
       </label>
 
+      <label className="grid gap-1 text-sm font-semibold text-stone-700">
+        צילום מחברת
+        <input
+          accept="image/*"
+          capture="environment"
+          className="min-h-11 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950"
+          name="photo"
+          type="file"
+        />
+      </label>
+
       <button
         className="min-h-11 rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-teal-800"
         type="submit"
