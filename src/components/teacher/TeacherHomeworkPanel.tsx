@@ -144,8 +144,8 @@ function DeleteHomeworkDialog({
           למחוק את שיעורי הבית?
         </h2>
         <p className="mt-2 text-sm leading-6 text-stone-600">
-          שיעורי הבית יוסרו מהכיתה והתלמידים לא יוכלו לראות אותם. לא ניתן לשחזר
-          אותם מהממשק כרגע.
+          המשימה תוסר מהכיתה והתלמידים לא יוכלו לראות אותה. לא ניתן לשחזר אותה
+          מהממשק כרגע.
         </p>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <button
