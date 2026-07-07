@@ -12,7 +12,13 @@ export type {
   HomeworkStatus,
   UnderstandingLevel,
 } from "./homework";
-export type { Announcement } from "./announcements";
+export type {
+  Announcement,
+  AnnouncementCategory,
+  AnnouncementLink,
+  AnnouncementReadDetails,
+  AnnouncementReadParticipant,
+} from "./announcements";
 export type {
   KnowledgeDomain,
   KnowledgeSkill,

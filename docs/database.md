@@ -1,6 +1,9 @@
 # Database Schema
 
-Source of truth: `supabase/migrations/0001_current_schema_reference.sql`.
+Source of truth:
+
+- `supabase/migrations/0001_current_schema_reference.sql`
+- `supabase/migrations/0002_announcements_workflow.sql`
 
 This document describes the current effective Supabase schema after the contextual class role migration in that file. Earlier definitions in the same migration create the first version of the schema, then the later section replaces the global/legacy class role model.
 
@@ -100,14 +103,72 @@ Columns:
 - `class_id uuid references classes(id)`
 - `title text`
 - `body text`
+- `category public.announcement_category`
 - `visible_from timestamptz`
 - `visible_until timestamptz`
 - `is_pinned boolean`
+- `is_hidden boolean`
 - `created_by uuid references profiles(id)`
+- `updated_by uuid references profiles(id)`
+- `deleted_at timestamptz`
+- `require_read_confirmation boolean`
 - `created_at timestamptz`
 - `updated_at timestamptz`
 
 Access is class-membership based.
+
+Visibility rules for students:
+
+- The user must have an active `student` membership in the announcement class.
+- `deleted_at is null`
+- `is_hidden = false`
+- `visible_from <= now()`
+- `visible_until is null or visible_until >= now()`
+
+Staff visibility:
+
+- Active class staff can select announcements for their classes.
+- `owner` and `teacher` can create, edit, hide/unhide, and soft delete announcements for their classes.
+- Soft delete means setting `deleted_at`; the app does not hard delete announcement rows.
+
+### `announcement_links`
+
+Attached links for announcements. These are URL links only; file attachments are not part of this workflow.
+
+Columns:
+
+- `id uuid primary key`
+- `announcement_id uuid references announcements(id)`
+- `title text`
+- `url text`
+- `sort_order int`
+- `created_at timestamptz`
+
+Access follows the parent announcement:
+
+- Users who can read the parent announcement can read its links.
+- `owner` and `teacher` memberships in the parent class can manage links.
+
+### `announcement_reads`
+
+Student read confirmations for announcements that require them.
+
+Columns:
+
+- `announcement_id uuid references announcements(id)`
+- `user_id uuid references profiles(id)`
+- `read_at timestamptz`
+
+Primary key:
+
+- `(announcement_id, user_id)`
+
+Rules:
+
+- Students can mark only themselves as read.
+- Students can mark read only for visible announcements in classes where they have an active `student` membership.
+- Staff can view read rows for announcements in classes where they have staff membership.
+- Read-count denominators use active `student` rows in `class_memberships`.
 
 ### `homework_assignments`
 
@@ -280,6 +341,13 @@ Columns:
 - `viewer`
 - `student`
 
+### `announcement_category`
+
+- `general`
+- `exam`
+- `reminder`
+- `material`
+
 ### `homework_status`
 
 - `not_started`
@@ -313,10 +381,14 @@ Columns:
 RLS is enabled for the app tables. Policies are based on contextual class membership:
 
 - Class members can select their classes and class content.
+- Students can select only visible announcements for their classes.
+- Class staff can select announcements for their classes.
 - `owner`, `teacher`, and `viewer` are class staff.
 - `owner` and `teacher` can manage class content.
 - Only `owner` can update/delete class records and manage memberships after first owner creation.
 - Students can create/update their own homework submissions.
+- Students can create/update their own announcement read confirmations.
 - Staff can view student submissions for classes they are connected to.
+- Staff can view announcement read-confirmation counts and details for their classes.
 
 See `docs/auth-and-roles.md` for the role rules and helper functions.

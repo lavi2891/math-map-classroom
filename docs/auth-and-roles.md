@@ -1,6 +1,9 @@
 # Auth And Roles
 
-Source of truth: `supabase/migrations/0001_current_schema_reference.sql`.
+Source of truth:
+
+- `supabase/migrations/0001_current_schema_reference.sql`
+- `supabase/migrations/0002_announcements_workflow.sql`
 
 This project uses Supabase Auth for identity and `public.profiles` for profile metadata. Authorization is contextual and class-based through `public.class_memberships`.
 
@@ -52,6 +55,7 @@ Teaching staff for a class. This role can:
 
 - View the class and class content.
 - Manage class content such as announcements and homework.
+- View announcement read-confirmation counts and details.
 - View relevant student submissions and self assessments.
 
 This role does not replace class ownership.
@@ -69,7 +73,8 @@ This role is staff for visibility, but not for content management.
 
 Student membership in a class. This role can:
 
-- View the class and class content.
+- View the class and visible class content.
+- Mark themselves as read for announcements that require read confirmation.
 - Create and update their own homework submissions.
 - Create and update their own skill self assessments.
 - Create their own practice sessions.
@@ -119,6 +124,48 @@ Helper:
 
 - `public.can_manage_class_content(target_class_id uuid)`
 
+### Who can manage announcements?
+
+Announcement managers are active `owner` and `teacher` memberships in the announcement class.
+
+Managers can:
+
+- Create announcements for classes they manage.
+- Edit title, body, category, links, pinned state, visibility dates, and read-confirmation requirement.
+- Hide and unhide announcements through `is_hidden`.
+- Soft delete announcements by setting `deleted_at`.
+
+Managers must be authorized through `class_memberships`. Do not use `profiles.role`, `classes.teacher_id`, `class_students`, a service role key, or any RLS bypass for announcement management.
+
+### Who can read announcements?
+
+Students can read announcements only when all of these are true:
+
+- They have an active `student` membership in the announcement class.
+- `deleted_at is null`
+- `is_hidden = false`
+- `visible_from <= now()`
+- `visible_until is null or visible_until >= now()`
+
+Class staff can read announcements in their classes for management and review.
+
+### How do read confirmations work?
+
+Announcements can set `require_read_confirmation = true`.
+
+Students can mark only themselves as read. The app writes:
+
+- `announcement_id`
+- `user_id = auth.uid()`
+- `read_at = now()`
+
+Staff can view read counts for their classes. The denominator is active student memberships in the announcement class:
+
+- `class_memberships.role = 'student'`
+- `class_memberships.active = true`
+
+Staff read details are split into students who marked read and students who have not marked read.
+
 ### Is this user the class owner?
 
 Use `class_memberships.role = 'owner'`.
@@ -164,7 +211,9 @@ The current RLS model follows these rules:
 - `classes`: first class owner can be inserted through membership bootstrap flow; class updates/deletes are owner-only.
 - `class_memberships`: users can view their own membership; class staff can view related memberships.
 - `class_memberships`: first owner can be created; later membership management is owner-only.
-- `announcements`: class members can view; `owner` and `teacher` can manage.
+- `announcements`: staff can view class announcements; students can view visible class announcements; `owner` and `teacher` can manage.
+- `announcement_links`: readable with the parent announcement; `owner` and `teacher` can manage through the parent class.
+- `announcement_reads`: students can mark themselves as read; staff can view read rows for their classes.
 - `homework_assignments`: class members can view; `owner` and `teacher` can manage.
 - `homework_submissions`: students can manage their own submissions; class staff can view.
 - `homework_files`: owners of submissions and class staff can view; submission owners can insert.

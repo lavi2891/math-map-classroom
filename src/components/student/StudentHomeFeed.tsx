@@ -2,6 +2,7 @@
 import { Card } from "@/components/app/Card";
 import { EmptyState } from "@/components/app/EmptyState";
 import { HomeworkSubmissionForm } from "@/components/homework/HomeworkSubmissionForm";
+import { StudentAnnouncementCard } from "@/components/student/StudentAnnouncementCard";
 import type {
   Announcement,
   ClassSummary,
@@ -87,10 +88,9 @@ export function StudentHomeFeed({
         <h2 className="text-lg font-bold text-stone-950">הודעות אחרונות</h2>
         {announcements.length > 0 ? (
           announcements.map((announcement) => (
-            <Card
+            <StudentAnnouncementCard
+              announcement={announcement}
               key={announcement.id}
-              title={announcement.title}
-              description={`${announcement.body} ${announcement.audience}`}
             />
           ))
         ) : (

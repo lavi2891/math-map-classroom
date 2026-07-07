@@ -2,6 +2,7 @@
 import { Card } from "@/components/app/Card";
 import { EmptyState } from "@/components/app/EmptyState";
 import { HomeworkSubmissionForm } from "@/components/homework/HomeworkSubmissionForm";
+import { StudentAnnouncementCard } from "@/components/student/StudentAnnouncementCard";
 import type { Announcement, HomeworkAssignment, HomeworkFile } from "@/types";
 
 type StudentClassFeedProps = {
@@ -70,10 +71,9 @@ export function StudentClassFeed({
   return (
     <div className="grid gap-3">
       {announcements.map((announcement) => (
-        <Card
+        <StudentAnnouncementCard
+          announcement={announcement}
           key={`announcement-${announcement.id}`}
-          title={announcement.title}
-          description={`${announcement.body} ${announcement.audience}`}
         />
       ))}
       {homework.map((assignment) => (

@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/app/PageHeader";
 import { StudentClassFeed } from "@/components/student/StudentClassFeed";
-import { getAnnouncements } from "@/lib/db/announcements";
+import { getStudentAnnouncements } from "@/lib/db/announcements";
 import { getStudentClasses } from "@/lib/db/classes";
 import { getStudentHomeworkAssignments } from "@/lib/db/homework";
 
@@ -8,7 +8,7 @@ export default async function StudentClassPage() {
   const classes = await getStudentClasses();
   const classIds = classes.map((classSummary) => classSummary.id);
   const [announcements, homework] = await Promise.all([
-    getAnnouncements(classIds),
+    getStudentAnnouncements(classIds),
     getStudentHomeworkAssignments(classIds),
   ]);
 
