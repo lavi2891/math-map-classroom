@@ -5,6 +5,11 @@ import { ROUTES } from "@/lib/constants/routes";
 import { upsertHomeworkSubmission } from "@/lib/db/homework";
 import type { HomeworkStatus, UnderstandingLevel } from "@/types";
 
+export type HomeworkSubmissionActionState = {
+  error?: string;
+  success: boolean;
+};
+
 const HOMEWORK_STATUSES: HomeworkStatus[] = ["not_started", "started", "done"];
 const UNDERSTANDING_LEVELS: UnderstandingLevel[] = [
   "good",
@@ -27,7 +32,10 @@ function isUnderstandingLevel(value: string): value is UnderstandingLevel {
   return UNDERSTANDING_LEVELS.includes(value as UnderstandingLevel);
 }
 
-export async function submitHomework(formData: FormData) {
+export async function submitHomework(
+  _state: HomeworkSubmissionActionState,
+  formData: FormData,
+): Promise<HomeworkSubmissionActionState> {
   const homeworkId = getString(formData, "homeworkId");
   const status = getString(formData, "status");
   const understanding = getString(formData, "understanding");
@@ -38,17 +46,29 @@ export async function submitHomework(formData: FormData) {
     !isHomeworkStatus(status) ||
     !isUnderstandingLevel(understanding)
   ) {
-    return;
+    return {
+      error: "חסרים פרטים לשליחת ההגשה.",
+      success: false,
+    };
   }
 
-  await upsertHomeworkSubmission({
+  const success = await upsertHomeworkSubmission({
     homeworkId,
     note,
     status,
     understanding,
   });
 
+  if (!success) {
+    return {
+      error: "לא הצלחנו לשמור את ההגשה.",
+      success: false,
+    };
+  }
+
   revalidatePath(ROUTES.studentHome);
   revalidatePath(ROUTES.studentClass);
   revalidatePath(ROUTES.teacherHomework);
+
+  return { success: true };
 }

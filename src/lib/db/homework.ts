@@ -434,7 +434,7 @@ export async function createHomeworkAssignment(input: HomeworkAssignmentInput) {
   const user = await getCurrentUser();
 
   if (!user) {
-    return;
+    return false;
   }
 
   const manageableClassIds = (await getCurrentUserManageableMemberships()).map(
@@ -442,11 +442,11 @@ export async function createHomeworkAssignment(input: HomeworkAssignmentInput) {
   );
 
   if (!manageableClassIds.includes(input.classId)) {
-    return;
+    return false;
   }
 
   const supabase = await createSupabaseServerClient();
-  await supabase.from("homework_assignments").insert({
+  const { error } = await supabase.from("homework_assignments").insert({
     allow_external_url: input.allowExternalUrl,
     class_id: input.classId,
     created_by: user.id,
@@ -459,6 +459,8 @@ export async function createHomeworkAssignment(input: HomeworkAssignmentInput) {
     title: input.title,
     visible_from: input.visibleFrom ?? new Date().toISOString(),
   });
+
+  return !error;
 }
 
 export async function updateHomeworkAssignment(
@@ -470,11 +472,11 @@ export async function updateHomeworkAssignment(
   );
 
   if (!manageableClassIds.includes(input.classId)) {
-    return;
+    return false;
   }
 
   const supabase = await createSupabaseServerClient();
-  await supabase
+  const { error } = await supabase
     .from("homework_assignments")
     .update({
       allow_external_url: input.allowExternalUrl,
@@ -489,17 +491,19 @@ export async function updateHomeworkAssignment(
       visible_from: input.visibleFrom ?? new Date().toISOString(),
     })
     .eq("id", id);
+
+  return !error;
 }
 
 export async function upsertHomeworkSubmission(input: HomeworkSubmissionInput) {
   const user = await getCurrentUser();
 
   if (!user) {
-    return;
+    return false;
   }
 
   const supabase = await createSupabaseServerClient();
-  await supabase.from("homework_submissions").upsert(
+  const { error } = await supabase.from("homework_submissions").upsert(
     {
       homework_id: input.homeworkId,
       note: input.note || null,
@@ -512,6 +516,8 @@ export async function upsertHomeworkSubmission(input: HomeworkSubmissionInput) {
       onConflict: "homework_id,student_id",
     },
   );
+
+  return !error;
 }
 
 export function getStudentPracticeCards(): AppCard[] {

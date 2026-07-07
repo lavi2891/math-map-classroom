@@ -12,6 +12,11 @@ import {
 } from "@/lib/db/announcements";
 import type { AnnouncementCategory } from "@/types";
 
+export type AnnouncementActionState = {
+  error?: string;
+  success: boolean;
+};
+
 const CATEGORIES: AnnouncementCategory[] = [
   "general",
   "exam",
@@ -76,29 +81,63 @@ function getAnnouncementInput(formData: FormData): AnnouncementInput | null {
   };
 }
 
-export async function createAnnouncementAction(formData: FormData) {
+export async function createAnnouncementAction(
+  _state: AnnouncementActionState,
+  formData: FormData,
+): Promise<AnnouncementActionState> {
   const input = getAnnouncementInput(formData);
 
-  if (input) {
-    await createAnnouncement(input);
+  if (!input) {
+    return {
+      error: "חסרים פרטים לשמירת ההודעה.",
+      success: false,
+    };
+  }
+
+  const success = await createAnnouncement(input);
+
+  if (!success) {
+    return {
+      error: "לא הצלחנו לשמור את ההודעה.",
+      success: false,
+    };
   }
 
   revalidatePath(ROUTES.teacherAnnouncements);
   revalidatePath(ROUTES.studentClass);
   revalidatePath(ROUTES.studentHome);
+
+  return { success: true };
 }
 
-export async function updateAnnouncementAction(formData: FormData) {
+export async function updateAnnouncementAction(
+  _state: AnnouncementActionState,
+  formData: FormData,
+): Promise<AnnouncementActionState> {
   const id = getString(formData, "announcementId");
   const input = getAnnouncementInput(formData);
 
-  if (id && input) {
-    await updateAnnouncement(id, input);
+  if (!id || !input) {
+    return {
+      error: "חסרים פרטים לשמירת ההודעה.",
+      success: false,
+    };
+  }
+
+  const success = await updateAnnouncement(id, input);
+
+  if (!success) {
+    return {
+      error: "לא הצלחנו לשמור את ההודעה.",
+      success: false,
+    };
   }
 
   revalidatePath(ROUTES.teacherAnnouncements);
   revalidatePath(ROUTES.studentClass);
   revalidatePath(ROUTES.studentHome);
+
+  return { success: true };
 }
 
 export async function hideAnnouncementAction(formData: FormData) {

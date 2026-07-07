@@ -1,13 +1,18 @@
 "use client";
 
+import { useActionState, useEffect } from "react";
 import {
   announcementCategoryLabels,
   formatDateTimeInput,
 } from "@/components/announcements/announcementLabels";
+import type { AnnouncementActionState } from "@/app/teacher/announcements/actions";
 import type { Announcement, AnnouncementCategory, ClassSummary } from "@/types";
 
 type AnnouncementFormProps = {
-  action: (formData: FormData) => Promise<void>;
+  action: (
+    state: AnnouncementActionState,
+    formData: FormData,
+  ) => Promise<AnnouncementActionState>;
   announcement?: Announcement;
   classes: ClassSummary[];
   onCancel: () => void;
@@ -32,9 +37,18 @@ export function AnnouncementForm({
   submitLabel,
 }: AnnouncementFormProps) {
   const links = announcement?.links ?? [];
+  const [state, formAction, isPending] = useActionState(action, {
+    success: false,
+  });
+
+  useEffect(() => {
+    if (state.success) {
+      onCancel();
+    }
+  }, [onCancel, state.success]);
 
   return (
-    <form action={action} className="grid min-w-0 gap-3" dir="rtl">
+    <form action={formAction} className="grid min-w-0 gap-3" dir="rtl">
       {announcement ? (
         <input name="announcementId" type="hidden" value={announcement.id} />
       ) : null}
@@ -165,12 +179,17 @@ export function AnnouncementForm({
         ))}
       </div>
 
+      {state.error ? (
+        <p className="text-sm font-bold text-red-700">{state.error}</p>
+      ) : null}
+
       <div className="flex flex-col gap-2 sm:flex-row">
         <button
-          className="min-h-11 rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-teal-800"
+          className="min-h-11 rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-teal-800 disabled:opacity-60"
+          disabled={isPending}
           type="submit"
         >
-          {submitLabel}
+          {isPending ? "שומר..." : submitLabel}
         </button>
         <button
           className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-50"

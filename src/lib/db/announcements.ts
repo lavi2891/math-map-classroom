@@ -444,7 +444,7 @@ export async function createAnnouncement(input: AnnouncementInput) {
   const user = await getCurrentUser();
 
   if (!user) {
-    return;
+    return false;
   }
 
   const manageableClassIds = (await getCurrentUserManageableMemberships()).map(
@@ -452,7 +452,7 @@ export async function createAnnouncement(input: AnnouncementInput) {
   );
 
   if (!manageableClassIds.includes(input.classId)) {
-    return;
+    return false;
   }
 
   const supabase = await createSupabaseServerClient();
@@ -475,17 +475,18 @@ export async function createAnnouncement(input: AnnouncementInput) {
     .single();
 
   if (error || !data) {
-    return;
+    return false;
   }
 
   await replaceAnnouncementLinks(data.id, input.links);
+  return true;
 }
 
 export async function updateAnnouncement(id: string, input: AnnouncementInput) {
   const user = await getCurrentUser();
 
   if (!user) {
-    return;
+    return false;
   }
 
   const manageableClassIds = (await getCurrentUserManageableMemberships()).map(
@@ -493,7 +494,7 @@ export async function updateAnnouncement(id: string, input: AnnouncementInput) {
   );
 
   if (!manageableClassIds.includes(input.classId)) {
-    return;
+    return false;
   }
 
   const supabase = await createSupabaseServerClient();
@@ -515,7 +516,10 @@ export async function updateAnnouncement(id: string, input: AnnouncementInput) {
 
   if (!error) {
     await replaceAnnouncementLinks(id, input.links);
+    return true;
   }
+
+  return false;
 }
 
 export async function setAnnouncementHidden(id: string, isHidden: boolean) {

@@ -1,10 +1,15 @@
 "use client";
 
+import { useActionState, useEffect } from "react";
 import { formatDateTimeInput } from "@/components/homework/homeworkLabels";
+import type { HomeworkActionState } from "@/app/teacher/homework/actions";
 import type { ClassSummary, HomeworkAssignment } from "@/types";
 
 type HomeworkFormProps = {
-  action: (formData: FormData) => Promise<void>;
+  action: (
+    state: HomeworkActionState,
+    formData: FormData,
+  ) => Promise<HomeworkActionState>;
   assignment?: HomeworkAssignment;
   classes: ClassSummary[];
   onCancel: () => void;
@@ -19,8 +24,18 @@ export function HomeworkForm({
   classes,
   onCancel,
 }: HomeworkFormProps) {
+  const [state, formAction, isPending] = useActionState(action, {
+    success: false,
+  });
+
+  useEffect(() => {
+    if (state.success) {
+      onCancel();
+    }
+  }, [onCancel, state.success]);
+
   return (
-    <form action={action} className="grid min-w-0 gap-3" dir="rtl">
+    <form action={formAction} className="grid min-w-0 gap-3" dir="rtl">
       {assignment ? (
         <input name="homeworkId" type="hidden" value={assignment.id} />
       ) : null}
@@ -134,12 +149,17 @@ export function HomeworkForm({
         />
       </label>
 
+      {state.error ? (
+        <p className="text-sm font-bold text-red-700">{state.error}</p>
+      ) : null}
+
       <div className="flex flex-col gap-2 sm:flex-row">
         <button
-          className="min-h-11 rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-teal-800"
+          className="min-h-11 rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-teal-800 disabled:opacity-60"
+          disabled={isPending}
           type="submit"
         >
-          שמור
+          {isPending ? "שומר..." : "שמור"}
         </button>
         <button
           className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-50"

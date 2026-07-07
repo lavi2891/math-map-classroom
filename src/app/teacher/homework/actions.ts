@@ -8,6 +8,11 @@ import {
   type HomeworkAssignmentInput,
 } from "@/lib/db/homework";
 
+export type HomeworkActionState = {
+  error?: string;
+  success: boolean;
+};
+
 function getString(formData: FormData, field: string) {
   const value = formData.get(field);
 
@@ -48,27 +53,61 @@ function getHomeworkInput(formData: FormData): HomeworkAssignmentInput | null {
   };
 }
 
-export async function createHomeworkAction(formData: FormData) {
+export async function createHomeworkAction(
+  _state: HomeworkActionState,
+  formData: FormData,
+): Promise<HomeworkActionState> {
   const input = getHomeworkInput(formData);
 
-  if (input) {
-    await createHomeworkAssignment(input);
+  if (!input) {
+    return {
+      error: "חסרים פרטים לשמירת שיעורי הבית.",
+      success: false,
+    };
+  }
+
+  const success = await createHomeworkAssignment(input);
+
+  if (!success) {
+    return {
+      error: "לא הצלחנו לשמור את שיעורי הבית.",
+      success: false,
+    };
   }
 
   revalidatePath(ROUTES.teacherHomework);
   revalidatePath(ROUTES.studentClass);
   revalidatePath(ROUTES.studentHome);
+
+  return { success: true };
 }
 
-export async function updateHomeworkAction(formData: FormData) {
+export async function updateHomeworkAction(
+  _state: HomeworkActionState,
+  formData: FormData,
+): Promise<HomeworkActionState> {
   const id = getString(formData, "homeworkId");
   const input = getHomeworkInput(formData);
 
-  if (id && input) {
-    await updateHomeworkAssignment(id, input);
+  if (!id || !input) {
+    return {
+      error: "חסרים פרטים לשמירת שיעורי הבית.",
+      success: false,
+    };
+  }
+
+  const success = await updateHomeworkAssignment(id, input);
+
+  if (!success) {
+    return {
+      error: "לא הצלחנו לשמור את שיעורי הבית.",
+      success: false,
+    };
   }
 
   revalidatePath(ROUTES.teacherHomework);
   revalidatePath(ROUTES.studentClass);
   revalidatePath(ROUTES.studentHome);
+
+  return { success: true };
 }

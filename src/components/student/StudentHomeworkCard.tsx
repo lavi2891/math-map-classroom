@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { Card } from "@/components/app/Card";
 import { HomeworkSubmissionForm } from "@/components/homework/HomeworkSubmissionForm";
 import {
@@ -11,6 +14,7 @@ export function StudentHomeworkCard({
 }: {
   assignment: HomeworkAssignment;
 }) {
+  const [isSubmissionOpen, setIsSubmissionOpen] = useState(false);
   const submission = assignment.submission;
 
   return (
@@ -55,17 +59,24 @@ export function StudentHomeworkCard({
             המורה ביקש צילום מחברת. העלאת צילום תתווסף בשלב הבא.
           </p>
         ) : null}
-        <details className="rounded-md border border-stone-200 bg-stone-50 p-3">
-          <summary className="cursor-pointer text-sm font-bold text-teal-700">
-            {submission?.id ? "עדכן הגשה" : "פתח הגשה"}
-          </summary>
-          <div className="mt-3">
+
+        {isSubmissionOpen ? (
+          <div className="rounded-md border border-stone-200 bg-stone-50 p-3">
             <HomeworkSubmissionForm
               homeworkId={assignment.id}
+              onSuccess={() => setIsSubmissionOpen(false)}
               submission={submission}
             />
           </div>
-        </details>
+        ) : (
+          <button
+            className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-teal-700 transition hover:bg-stone-50 sm:w-fit"
+            onClick={() => setIsSubmissionOpen(true)}
+            type="button"
+          >
+            {submission?.id ? "עדכן הגשה" : "פתח הגשה"}
+          </button>
+        )}
       </div>
     </Card>
   );
