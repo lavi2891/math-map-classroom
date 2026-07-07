@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import { Card } from "@/components/app/Card";
+import { StatusBadge } from "@/components/app/StatusBadge";
 import { HomeworkSubmissionForm } from "@/components/homework/HomeworkSubmissionForm";
 import {
-  homeworkStatusLabels,
-  understandingLabels,
+  getHomeworkStatusLabel,
+  getHomeworkStatusTone,
+  getUnderstandingLabel,
+  getUnderstandingTone,
 } from "@/components/homework/homeworkLabels";
 import type { HomeworkAssignment } from "@/types";
 
@@ -26,23 +29,23 @@ export function StudentHomeworkCard({
         <p className="whitespace-pre-line text-sm leading-6 text-stone-700">
           {assignment.description}
         </p>
-        <div className="grid gap-1 text-sm text-stone-600">
+        <div className="grid gap-2 text-sm text-stone-600">
           <p>תאריך יעד: {assignment.dueDate ?? "אין תאריך יעד"}</p>
           {assignment.isOverdue ? (
             <p className="font-bold text-red-700">עבר תאריך ההגשה</p>
           ) : null}
-          <p>
-            סטטוס ההגשה שלי:{" "}
-            {submission?.status
-              ? homeworkStatusLabels[submission.status]
-              : "לא הגיש"}
-          </p>
-          <p>
-            הבנה שלי:{" "}
-            {submission?.understanding
-              ? understandingLabels[submission.understanding]
-              : "לא מסומן"}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-bold text-stone-700">סטטוס ההגשה שלי:</span>
+            <StatusBadge tone={getHomeworkStatusTone(submission?.status)}>
+              {getHomeworkStatusLabel(submission?.status)}
+            </StatusBadge>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-bold text-stone-700">הבנה שלי:</span>
+            <StatusBadge tone={getUnderstandingTone(submission?.understanding)}>
+              {getUnderstandingLabel(submission?.understanding)}
+            </StatusBadge>
+          </div>
         </div>
         {assignment.externalUrl ? (
           <a

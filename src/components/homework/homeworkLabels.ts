@@ -1,3 +1,4 @@
+import type { StatusBadgeTone } from "@/components/app/StatusBadge";
 import type { HomeworkAssignment, HomeworkStatus, UnderstandingLevel } from "@/types";
 
 export const homeworkStatusLabels: Record<HomeworkStatus, string> = {
@@ -10,8 +11,46 @@ export const understandingLabels: Record<UnderstandingLevel, string> = {
   good: "הבנתי טוב",
   no: "לא הבנתי",
   partial: "הבנתי חלקית",
-  unknown: "לא מסומן",
+  unknown: "לא דווח",
 };
+
+export function getHomeworkStatusLabel(status?: HomeworkStatus) {
+  return status ? homeworkStatusLabels[status] : "לא הוגש";
+}
+
+export function getHomeworkStatusTone(status?: HomeworkStatus): StatusBadgeTone {
+  if (status === "done") {
+    return "success";
+  }
+
+  if (status === "started") {
+    return "warning";
+  }
+
+  return "danger";
+}
+
+export function getUnderstandingLabel(understanding?: UnderstandingLevel) {
+  return understanding ? understandingLabels[understanding] : "לא דווח";
+}
+
+export function getUnderstandingTone(
+  understanding?: UnderstandingLevel,
+): StatusBadgeTone {
+  if (understanding === "good") {
+    return "success";
+  }
+
+  if (understanding === "partial") {
+    return "warning";
+  }
+
+  if (understanding === "no") {
+    return "danger";
+  }
+
+  return "neutral";
+}
 
 export function getHomeworkVisibilityLabel(assignment: HomeworkAssignment) {
   const visibleFrom = Date.parse(assignment.visibleFrom);
