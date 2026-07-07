@@ -20,6 +20,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
     initialState,
   );
   const error = teacherState.error ?? studentState.error ?? initialError;
+  const debug = teacherState.debug ?? studentState.debug;
 
   return (
     <div className="mt-6">
@@ -52,6 +53,18 @@ export function LoginForm({ initialError }: { initialError?: string }) {
         <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
           {error}
         </p>
+      ) : null}
+
+      {debug ? (
+        <div
+          className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950"
+          dir="ltr"
+        >
+          <p className="mb-2 font-bold">Development auth debug</p>
+          <pre className="overflow-x-auto whitespace-pre-wrap">
+            {JSON.stringify(debug, null, 2)}
+          </pre>
+        </div>
       ) : null}
 
       {mode === "teacher" ? (
