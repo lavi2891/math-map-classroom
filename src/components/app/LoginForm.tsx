@@ -100,24 +100,13 @@ export function LoginForm({ initialError }: { initialError?: string }) {
       ) : (
         <form action={studentAction} className="mt-4 grid gap-3">
           <label className="grid gap-1 text-sm font-semibold text-stone-700">
-            קוד כיתה
-            <input
-              autoCapitalize="characters"
-              autoComplete="off"
-              className="min-h-12 rounded-md border border-stone-200 bg-white px-3 text-base text-stone-950 outline-none focus:border-teal-700"
-              name="classCode"
-              placeholder="Z7A"
-              required
-              type="text"
-            />
-          </label>
-          <label className="grid gap-1 text-sm font-semibold text-stone-700">
-            קוד תלמיד
+            שם משתמש
             <input
               autoComplete="username"
+              autoCapitalize="none"
               className="min-h-12 rounded-md border border-stone-200 bg-white px-3 text-base text-stone-950 outline-none focus:border-teal-700"
-              name="studentCode"
-              placeholder="001"
+              name="username"
+              placeholder="s001"
               required
               type="text"
             />

@@ -1,24 +1,17 @@
 import { EmptyState } from "@/components/app/EmptyState";
 import { StudentAnnouncementCard } from "@/components/student/StudentAnnouncementCard";
-import { StudentHomeworkCard } from "@/components/student/StudentHomeworkCard";
-import type { Announcement, HomeworkAssignment } from "@/types";
+import type { Announcement } from "@/types";
 
 type StudentClassFeedProps = {
   announcements: Announcement[];
-  homework: HomeworkAssignment[];
 };
 
-export function StudentClassFeed({
-  announcements,
-  homework,
-}: StudentClassFeedProps) {
-  const hasFeedItems = announcements.length > 0 || homework.length > 0;
-
-  if (!hasFeedItems) {
+export function StudentClassFeed({ announcements }: StudentClassFeedProps) {
+  if (announcements.length === 0) {
     return (
       <EmptyState
-        title="אין פעילות להצגה"
-        description="הודעות ושיעורי בית יופיעו כאן כאשר יהיו זמינים."
+        title="אין הודעות להצגה"
+        description="הודעות מהמורה יופיעו כאן כאשר יהיו זמינות."
       />
     );
   }
@@ -31,19 +24,6 @@ export function StudentClassFeed({
           key={`announcement-${announcement.id}`}
         />
       ))}
-      {homework.length > 0 ? (
-        homework.map((assignment) => (
-          <StudentHomeworkCard
-            assignment={assignment}
-            key={`homework-${assignment.id}`}
-          />
-        ))
-      ) : (
-        <EmptyState
-          title="אין שיעורי בית פתוחים כרגע."
-          description="שיעורי בית גלויים יופיעו כאן."
-        />
-      )}
     </div>
   );
 }

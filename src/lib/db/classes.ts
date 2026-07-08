@@ -1,6 +1,13 @@
-import { getCurrentUserStaffMemberships, getCurrentUserStudentMemberships } from "@/lib/db/memberships";
+import { cookies } from "next/headers";
+import {
+  getCurrentUserStaffMemberships,
+  getCurrentUserStudentMemberships,
+  getStudentMemberships,
+} from "@/lib/db/memberships";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ClassMembership, ClassSummary } from "@/types";
+
+export const SELECTED_STUDENT_CLASS_COOKIE = "selectedStudentClassId";
 
 type ClassRow = {
   class_code: string;
@@ -94,8 +101,32 @@ export async function getTeacherClasses() {
   return getClassesForMemberships(memberships);
 }
 
-export async function getStudentClasses() {
-  const memberships = await getCurrentUserStudentMemberships();
+export async function getStudentClasses(userId?: string) {
+  const memberships = userId
+    ? await getStudentMemberships(userId)
+    : await getCurrentUserStudentMemberships();
 
   return getClassesForMemberships(memberships);
+}
+
+export async function getSelectedStudentClass(userId: string) {
+  const classes = await getStudentClasses(userId);
+
+  if (classes.length === 0) {
+    return {
+      classes,
+      selectedClass: undefined,
+    };
+  }
+
+  const cookieStore = await cookies();
+  const selectedClassId = cookieStore.get(SELECTED_STUDENT_CLASS_COOKIE)?.value;
+  const selectedClass =
+    classes.find((classSummary) => classSummary.id === selectedClassId) ??
+    classes[0];
+
+  return {
+    classes,
+    selectedClass,
+  };
 }

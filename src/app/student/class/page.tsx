@@ -1,22 +1,22 @@
 import { PageHeader } from "@/components/app/PageHeader";
 import { StudentClassFeed } from "@/components/student/StudentClassFeed";
-import { StudentHomeworkHistory } from "@/components/student/StudentHomeworkHistory";
+import { StudentHomeworkList } from "@/components/student/StudentHomeworkList";
+import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { getStudentAnnouncements } from "@/lib/db/announcements";
-import { getStudentClasses } from "@/lib/db/classes";
-import {
-  getOpenStudentHomework,
-  getStudentHomeworkHistory,
-} from "@/lib/db/homework";
+import { getSelectedStudentClass } from "@/lib/db/classes";
+import { getStudentHomeworkList } from "@/lib/db/homework";
 
-const HOMEWORK_HISTORY_LIMIT = 100;
+const HOMEWORK_LIST_LIMIT = 100;
 
 export default async function StudentClassPage() {
-  const classes = await getStudentClasses();
-  const classIds = classes.map((classSummary) => classSummary.id);
-  const [announcements, homework, homeworkHistory] = await Promise.all([
+  const user = await getCurrentUser();
+  const { selectedClass } = user
+    ? await getSelectedStudentClass(user.id)
+    : { selectedClass: undefined };
+  const classIds = selectedClass ? [selectedClass.id] : [];
+  const [announcements, homework] = await Promise.all([
     getStudentAnnouncements(classIds, 10),
-    getOpenStudentHomework(10, classIds),
-    getStudentHomeworkHistory(HOMEWORK_HISTORY_LIMIT, classIds),
+    getStudentHomeworkList(HOMEWORK_LIST_LIMIT, classIds),
   ]);
 
   return (
@@ -26,8 +26,8 @@ export default async function StudentClassPage() {
         title="כיתה"
         description="הודעות ושיעורי בית מהכיתות הפעילות שלך."
       />
-      <StudentClassFeed announcements={announcements} homework={homework} />
-      <StudentHomeworkHistory assignments={homeworkHistory} />
+      <StudentClassFeed announcements={announcements} />
+      <StudentHomeworkList assignments={homework} />
     </div>
   );
 }

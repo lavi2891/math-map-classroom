@@ -62,3 +62,19 @@ export async function getCurrentUserStudentMemberships() {
 
   return memberships.filter((membership) => membership.role === "student");
 }
+
+export async function getStudentMemberships(userId: string) {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("class_memberships")
+    .select("class_id, user_id, role, active")
+    .eq("user_id", userId)
+    .eq("role", "student")
+    .eq("active", true);
+
+  if (error || !data) {
+    return [];
+  }
+
+  return (data as MembershipRow[]).map(toMembership);
+}

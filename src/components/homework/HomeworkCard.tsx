@@ -1,5 +1,6 @@
 import { HomeworkSubmissionList } from "@/components/homework/HomeworkSubmissionList";
 import { HomeworkSubmissionSummary } from "@/components/homework/HomeworkSubmissionSummary";
+import { HomeworkTagChips } from "@/components/homework/HomeworkTagChips";
 import { getHomeworkVisibilityLabel } from "@/components/homework/homeworkLabels";
 import { Card } from "@/components/app/Card";
 import type { HomeworkAssignment } from "@/types";
@@ -21,6 +22,7 @@ export function HomeworkCard({ assignment, className }: HomeworkCardProps) {
       description={`כיתה ${assignment.className ?? ""}`}
     >
       <div className="grid gap-3">
+        <HomeworkTagChips tags={assignment.tags} />
         <div className="grid gap-1 text-sm text-stone-600">
           <p>תאריך יעד: {assignment.dueDate ?? "אין תאריך יעד"}</p>
           <p>

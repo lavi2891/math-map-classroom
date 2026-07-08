@@ -51,7 +51,7 @@ Columns:
 - `created_at timestamptz`
 - `updated_at timestamptz`
 
-Important: there is no effective `role` column. Do not model authorization from `profiles.role`.
+Important: `profiles.username` is stable identity metadata for the user. Normal student auth emails are generated from the normalized username. There is no effective `role` column; do not model authorization from `profiles.role`.
 
 ### `classes`
 
@@ -92,7 +92,7 @@ Indexes:
 - `class_id`
 - `role`
 
-Use this table for all class-level access checks, staff views, student enrollment, and ownership.
+Use this table for all class-level access checks, staff views, student enrollment, current student class context, and ownership.
 
 ### `announcements`
 
@@ -214,7 +214,7 @@ Current app usage:
 - If `allow_late_submission = false`, students cannot submit or update after `due_at`.
 - `require_status`, `require_understanding`, and `require_photo` control which expectations are shown in the UI.
 - If `external_url` is filled, the app stores `allow_external_url = true`.
-- Default app list limits: student visible announcements 10, student open homework 10, student homework history 100 fetched / 10 initially shown, teacher announcements 20, and teacher homework 20.
+- Default app list limits: student visible announcements 10, student homework list 100 fetched / 10 initially shown, teacher announcements 20, and teacher homework 20.
 
 ### `homework_submissions`
 
@@ -242,6 +242,44 @@ Current app usage:
 - The app stores `submitted_at = now()` whenever the student submits or updates.
 - Teachers view submission summaries and per-student details for classes where they have active staff membership.
 - Summary denominators use active `student` memberships in `class_memberships`.
+
+### `tags`
+
+Reusable labels for homework organization and future autocomplete/search.
+
+Columns:
+
+- `id uuid primary key`
+- `label text` - display label, preserving the teacher-facing text.
+- `normalized_label text` - normalized value for uniqueness and search.
+- `class_id uuid null references classes(id)` - `null` means global/reusable; non-null means class-specific.
+- `knowledge_skill_id uuid null references knowledge_skills(id)` - optional link to a math skill.
+- `created_by uuid references profiles(id)`
+- `created_at timestamptz`
+- `updated_at timestamptz`
+
+Current app usage:
+
+- Tag normalization trims whitespace, removes leading `#`, collapses spaces, lowercases, and replaces spaces with `_` for `normalized_label`.
+- Teachers can create class-specific custom tags while creating or editing homework in classes they manage.
+- Skill suggestions can create tags linked to `knowledge_skills`.
+- There is no tag library, merge, or global delete UI yet.
+
+### `homework_tags`
+
+Join table connecting homework assignments to tags.
+
+Columns:
+
+- `homework_id uuid references homework_assignments(id)`
+- `tag_id uuid references tags(id)`
+- `created_at timestamptz`
+
+Current app usage:
+
+- Homework create/update replaces the assignment's tag links.
+- Teacher and student homework cards show attached tags.
+- Students can view tags on visible homework but cannot create or edit tags.
 
 ### `homework_files`
 

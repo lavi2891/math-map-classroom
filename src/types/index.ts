@@ -11,7 +11,9 @@ export type {
   HomeworkSubmissionDetail,
   HomeworkSubmissionSummary,
   HomeworkStatus,
-  StudentHomeworkHistoryFilter,
+  HomeworkTag,
+  HomeworkTagInput,
+  HomeworkTagSuggestion,
   UnderstandingLevel,
 } from "./homework";
 export type {

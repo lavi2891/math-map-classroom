@@ -5,22 +5,28 @@ import { EmptyState } from "@/components/app/EmptyState";
 import { StudentHomeworkCard } from "@/components/student/StudentHomeworkCard";
 import type { HomeworkAssignment } from "@/types";
 
-type StudentHomeworkHistoryProps = {
+type StudentHomeworkListProps = {
   assignments: HomeworkAssignment[];
+  enableLoadMore?: boolean;
+  initialCount?: number;
 };
 
-const HOMEWORK_PAGE_SIZE = 10;
+const DEFAULT_HOMEWORK_PAGE_SIZE = 10;
 
-export function StudentHomeworkHistory({ assignments }: StudentHomeworkHistoryProps) {
-  const [visibleCount, setVisibleCount] = useState(HOMEWORK_PAGE_SIZE);
+export function StudentHomeworkList({
+  assignments,
+  enableLoadMore = true,
+  initialCount = DEFAULT_HOMEWORK_PAGE_SIZE,
+}: StudentHomeworkListProps) {
+  const [visibleCount, setVisibleCount] = useState(initialCount);
   const visibleAssignments = useMemo(
     () => assignments.slice(0, visibleCount),
     [assignments, visibleCount],
   );
-  const hasMore = visibleCount < assignments.length;
+  const hasMore = enableLoadMore && visibleCount < assignments.length;
 
   return (
-    <section className="grid gap-3" id="homework-history">
+    <section className="grid gap-3" id="homework-list">
       <h2 className="text-lg font-bold text-stone-950">שיעורי בית</h2>
 
       {assignments.length > 0 ? (
@@ -34,16 +40,12 @@ export function StudentHomeworkHistory({ assignments }: StudentHomeworkHistoryPr
             <button
               className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-teal-700 transition hover:bg-stone-50 sm:w-fit"
               onClick={() =>
-                setVisibleCount((current) => current + HOMEWORK_PAGE_SIZE)
+                setVisibleCount((current) => current + DEFAULT_HOMEWORK_PAGE_SIZE)
               }
               type="button"
             >
               טען עוד
             </button>
-          ) : visibleCount > HOMEWORK_PAGE_SIZE ? (
-            <p className="text-sm font-bold text-stone-500">
-              אין עוד שיעורי בית להצגה
-            </p>
           ) : null}
         </>
       ) : (

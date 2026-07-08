@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { formatDateTimeInput } from "@/components/homework/homeworkLabels";
 import type { HomeworkActionState } from "@/app/teacher/homework/actions";
 import type { ClassSummary, HomeworkAssignment } from "@/types";
+import { HomeworkTagInput } from "./HomeworkTagInput";
 
 type HomeworkFormProps = {
   action: (
@@ -30,6 +31,9 @@ export function HomeworkForm({
   const [allowLateSubmission, setAllowLateSubmission] = useState(
     assignment?.allowLateSubmission ?? true,
   );
+  const [selectedClassId, setSelectedClassId] = useState(
+    assignment?.classId ?? classes[0]?.id,
+  );
 
   useEffect(() => {
     if (state.success) {
@@ -47,8 +51,9 @@ export function HomeworkForm({
         כיתה
         <select
           className={controlClass}
-          defaultValue={assignment?.classId ?? classes[0]?.id}
+          defaultValue={selectedClassId}
           name="classId"
+          onChange={(event) => setSelectedClassId(event.target.value)}
           required
         >
           {classes.map((classSummary) => (
@@ -79,6 +84,11 @@ export function HomeworkForm({
           required
         />
       </label>
+
+      <HomeworkTagInput
+        classId={selectedClassId}
+        initialTags={assignment?.tags}
+      />
 
       <div className="grid min-w-0 gap-3 md:grid-cols-2">
         <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-700">

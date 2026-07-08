@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { Card } from "@/components/app/Card";
 import { EmptyState } from "@/components/app/EmptyState";
 import { StudentAnnouncementCard } from "@/components/student/StudentAnnouncementCard";
-import { StudentHomeworkCard } from "@/components/student/StudentHomeworkCard";
+import { StudentHomeworkList } from "@/components/student/StudentHomeworkList";
 import type { Announcement, ClassSummary, HomeworkAssignment } from "@/types";
 
 type StudentHomeFeedProps = {
@@ -53,27 +52,11 @@ export function StudentHomeFeed({
         )}
       </section>
 
-      <section className="grid gap-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-lg font-bold text-stone-950">שיעורי בית פתוחים</h2>
-          <Link
-            className="text-sm font-bold text-teal-700 hover:text-teal-800"
-            href="/student/class#homework-history"
-          >
-            היסטוריית שיעורי בית
-          </Link>
-        </div>
-        {homework.length > 0 ? (
-          homework.map((assignment) => (
-            <StudentHomeworkCard assignment={assignment} key={assignment.id} />
-          ))
-        ) : (
-          <EmptyState
-            title="אין שיעורי בית פתוחים כרגע."
-            description="משימות פתוחות יופיעו כאן."
-          />
-        )}
-      </section>
+      <StudentHomeworkList
+        assignments={homework}
+        enableLoadMore={false}
+        initialCount={3}
+      />
     </div>
   );
 }

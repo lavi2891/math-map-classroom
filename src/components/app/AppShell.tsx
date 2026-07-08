@@ -7,11 +7,17 @@ import type { AppRole, Profile } from "@/types";
 
 type AppShellProps = {
   children: ReactNode;
+  headerControl?: ReactNode;
   navigationRole: AppRole;
   user: Profile;
 };
 
-export function AppShell({ children, navigationRole, user }: AppShellProps) {
+export function AppShell({
+  children,
+  headerControl,
+  navigationRole,
+  user,
+}: AppShellProps) {
   return (
     <div dir="rtl" className="min-h-screen pb-24">
       <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/90 px-4 py-3 backdrop-blur">
@@ -22,12 +28,15 @@ export function AppShell({ children, navigationRole, user }: AppShellProps) {
             </p>
             <h1 className="text-lg font-bold text-stone-950">{user.name}</h1>
           </div>
-          <Link
-            className="rounded-md bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-700"
-            href={ROUTES.logout}
-          >
-            יציאה
-          </Link>
+          <div className="flex items-center gap-2">
+            {headerControl}
+            <Link
+              className="rounded-md bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-700"
+              href={ROUTES.logout}
+            >
+              יציאה
+            </Link>
+          </div>
         </div>
       </header>
 

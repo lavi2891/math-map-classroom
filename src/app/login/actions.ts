@@ -20,6 +20,13 @@ type LoginDebugInfo = {
   queryError?: string;
 };
 
+type StudentLoginDebugInfo = {
+  authErrorMessage?: string;
+  enteredUsername: string;
+  generatedStudentEmail: string;
+  normalizedUsername: string;
+};
+
 type SupabaseServerClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 
 type ClassMembershipRow = {
@@ -29,14 +36,26 @@ type ClassMembershipRow = {
   user_id: string;
 };
 
-function getRequiredString(formData: FormData, field: string) {
+type SignInOptions = {
+  onAuthError?: (message: string) => void;
+};
+
+function getFormString(formData: FormData, field: string) {
   const value = formData.get(field);
 
-  return typeof value === "string" ? value.trim() : "";
+  return typeof value === "string" ? value : "";
 }
 
-function getStudentEmail(classCode: string, studentCode: string) {
-  return `${classCode.toLowerCase()}${studentCode.toLowerCase()}@students.local`;
+function getRequiredString(formData: FormData, field: string) {
+  return getFormString(formData, field).trim();
+}
+
+function normalizeUsername(username: string) {
+  return username.trim().toLowerCase();
+}
+
+function getStudentEmail(normalizedUsername: string) {
+  return `${normalizedUsername}@students.local`;
 }
 
 function getHomeRoute(appMode: "student" | "teacher") {
@@ -62,6 +81,14 @@ function logMembershipDebug(debug: LoginDebugInfo) {
   }
 
   console.log("[login] membership debug", debug);
+}
+
+function logStudentLoginFailureDebug(debug: StudentLoginDebugInfo) {
+  if (process.env.NODE_ENV !== "development") {
+    return;
+  }
+
+  console.log("[login] student auth failure", debug);
 }
 
 async function getLoggedInMemberships(
@@ -101,7 +128,11 @@ async function getLoggedInMemberships(
   return debug;
 }
 
-async function signInAndGetRedirect(email: string, password: string) {
+async function signInAndGetRedirect(
+  email: string,
+  password: string,
+  options: SignInOptions = {},
+) {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -109,6 +140,10 @@ async function signInAndGetRedirect(email: string, password: string) {
   });
 
   if (error || !data.user) {
+    options.onAuthError?.(
+      error?.message ?? "No authenticated Supabase user returned.",
+    );
+
     return {
       error: "פרטי ההתחברות שגויים.",
     };
@@ -160,19 +195,29 @@ export async function loginStudent(
   _previousState: LoginActionState,
   formData: FormData,
 ): Promise<LoginActionState> {
-  const classCode = getRequiredString(formData, "classCode");
-  const studentCode = getRequiredString(formData, "studentCode");
+  const username = getFormString(formData, "username");
   const password = getRequiredString(formData, "password");
+  const normalizedUsername = normalizeUsername(username);
+  const studentEmail = getStudentEmail(normalizedUsername);
 
-  if (!classCode || !studentCode || !password) {
+  if (!normalizedUsername || !password) {
     return {
-      error: "יש להזין קוד כיתה, קוד תלמיד וסיסמה.",
+      error: "יש להזין שם משתמש וסיסמה.",
     };
   }
 
   const result = await signInAndGetRedirect(
-    getStudentEmail(classCode, studentCode),
+    studentEmail,
     password,
+    {
+      onAuthError: (authErrorMessage) =>
+        logStudentLoginFailureDebug({
+          authErrorMessage,
+          enteredUsername: username,
+          generatedStudentEmail: studentEmail,
+          normalizedUsername,
+        }),
+    },
   );
 
   if ("error" in result) {

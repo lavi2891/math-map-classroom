@@ -61,6 +61,11 @@
 
 -- =========================================================
 -- 4. Add student profiles after auth users exist
+-- Recommended student auth emails:
+--   s001@students.local
+--   s002@students.local
+-- Student usernames are stable identities; class membership is managed separately
+-- in class_memberships.
 -- =========================================================
 
 -- insert into public.profiles (
@@ -72,12 +77,12 @@
 --   (
 --     'STUDENT_AUTH_USER_ID_HERE',
 --     'תלמיד לדוגמה 001',
---     'z7a001'
+--     's001'
 --   ),
 --   (
 --     'ANOTHER_STUDENT_AUTH_USER_ID_HERE',
 --     'תלמיד לדוגמה 002',
---     'z7a002'
+--     's002'
 --   )
 -- on conflict (id) do update
 -- set display_name = excluded.display_name,

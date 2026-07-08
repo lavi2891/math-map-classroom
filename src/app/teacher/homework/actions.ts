@@ -9,6 +9,8 @@ import {
   updateHomeworkAssignment,
   type HomeworkAssignmentInput,
 } from "@/lib/db/homework";
+import { getTagSuggestions } from "@/lib/db/tags";
+import type { HomeworkTagInput } from "@/types";
 
 export type HomeworkActionState = {
   error?: string;
@@ -29,6 +31,40 @@ function getDateTime(formData: FormData, field: string) {
   const value = getString(formData, field);
 
   return value ? new Date(value).toISOString() : undefined;
+}
+
+function getTagInputs(formData: FormData): HomeworkTagInput[] {
+  const value = getString(formData, "tags");
+
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.flatMap((item): HomeworkTagInput[] => {
+      if (!item || typeof item.label !== "string") {
+        return [];
+      }
+
+      return [
+        {
+          knowledgeSkillId:
+            typeof item.knowledgeSkillId === "string"
+              ? item.knowledgeSkillId
+              : undefined,
+          label: item.label,
+        },
+      ];
+    });
+  } catch {
+    return [];
+  }
 }
 
 function getHomeworkInput(formData: FormData): HomeworkAssignmentInput | null {
@@ -52,9 +88,17 @@ function getHomeworkInput(formData: FormData): HomeworkAssignmentInput | null {
     requirePhoto: getBoolean(formData, "requirePhoto"),
     requireStatus: getBoolean(formData, "requireStatus"),
     requireUnderstanding: getBoolean(formData, "requireUnderstanding"),
+    tags: getTagInputs(formData),
     title,
     visibleFrom: getDateTime(formData, "visibleFrom"),
   };
+}
+
+export async function getHomeworkTagSuggestionsAction(
+  input: string,
+  classId?: string,
+) {
+  return getTagSuggestions(input, classId);
 }
 
 export async function createHomeworkAction(

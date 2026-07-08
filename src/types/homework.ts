@@ -2,12 +2,6 @@ export type HomeworkStatus = "not_started" | "started" | "done";
 
 export type UnderstandingLevel = "good" | "partial" | "no" | "unknown";
 
-export type StudentHomeworkHistoryFilter =
-  | "all"
-  | "open"
-  | "overdue"
-  | "submitted";
-
 export type HomeworkSubmissionSummary = {
   doneCount: number;
   goodUnderstandingCount: number;
@@ -26,6 +20,24 @@ export type HomeworkFile = {
   mimeType?: string;
   signedUrl?: string;
   sizeBytes?: number;
+};
+
+export type HomeworkTag = {
+  classId?: string;
+  id: string;
+  knowledgeSkillId?: string;
+  label: string;
+  normalizedLabel: string;
+};
+
+export type HomeworkTagInput = {
+  knowledgeSkillId?: string;
+  label: string;
+};
+
+export type HomeworkTagSuggestion = HomeworkTagInput & {
+  id?: string;
+  source: "tag" | "skill";
 };
 
 export type HomeworkSubmissionDetail = {
@@ -62,6 +74,7 @@ export type HomeworkAssignment = {
   submission?: HomeworkSubmissionDetail;
   submissionDetails?: HomeworkSubmissionDetail[];
   submissionSummary: HomeworkSubmissionSummary;
+  tags: HomeworkTag[];
   title: string;
   visibleFrom: string;
 };

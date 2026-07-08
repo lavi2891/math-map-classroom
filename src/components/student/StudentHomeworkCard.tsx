@@ -5,6 +5,7 @@ import { Card } from "@/components/app/Card";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { HomeworkFileList } from "@/components/homework/HomeworkFileList";
 import { HomeworkSubmissionForm } from "@/components/homework/HomeworkSubmissionForm";
+import { HomeworkTagChips } from "@/components/homework/HomeworkTagChips";
 import {
   getHomeworkStatusLabel,
   getHomeworkStatusTone,
@@ -50,6 +51,7 @@ export function StudentHomeworkCard({
       description={`כיתה ${assignment.className ?? ""}`}
     >
       <div className="grid gap-3">
+        <HomeworkTagChips tags={assignment.tags} />
         <p className="whitespace-pre-line text-sm leading-6 text-stone-700">
           {assignment.description}
         </p>

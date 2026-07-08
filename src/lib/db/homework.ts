@@ -1,9 +1,9 @@
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
-import { getStudentClasses } from "@/lib/db/classes";
 import {
   getCurrentUserManageableMemberships,
   getCurrentUserStudentMemberships,
 } from "@/lib/db/memberships";
+import { getTagsForHomeworkIds, replaceHomeworkTags } from "@/lib/db/tags";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type {
   AppCard,
@@ -13,8 +13,9 @@ import type {
   HomeworkStatus,
   HomeworkSubmissionDetail,
   HomeworkSubmissionSummary,
+  HomeworkTag,
+  HomeworkTagInput,
   UnderstandingLevel,
-  StudentHomeworkHistoryFilter,
 } from "@/types";
 
 export type HomeworkAssignmentInput = {
@@ -28,6 +29,7 @@ export type HomeworkAssignmentInput = {
   requirePhoto: boolean;
   requireStatus: boolean;
   requireUnderstanding: boolean;
+  tags?: HomeworkTagInput[];
   title: string;
   visibleFrom?: string;
 };
@@ -292,6 +294,7 @@ function toHomeworkAssignment(
   row: HomeworkRow,
   submissionDetails: HomeworkSubmissionDetail[],
   submission?: HomeworkSubmissionDetail,
+  tags: HomeworkTag[] = [],
 ): HomeworkAssignment {
   const totalStudentCount = submissionDetails.length;
   const dueAt = row.due_at ?? undefined;
@@ -339,6 +342,7 @@ function toHomeworkAssignment(
     submission: studentSubmission,
     submissionDetails: details,
     submissionSummary: summarize(details, totalStudentCount),
+    tags,
     title: row.title,
     visibleFrom: row.visible_from,
   };
@@ -747,15 +751,22 @@ function getStudentHomeworkRelevanceRank(assignment: HomeworkAssignment) {
     return 0;
   }
 
-  if (assignment.isOverdue && needsStudentAction(assignment)) {
+  if (assignment.isOverdue && assignment.canSubmit) {
     return 1;
   }
 
-  if (assignment.submission?.submittedAt) {
+  if (
+    assignment.submission?.status === "started" ||
+    assignment.submission?.status === "not_started"
+  ) {
     return 2;
   }
 
-  return 3;
+  if (assignment.submission?.status === "done") {
+    return 3;
+  }
+
+  return 4;
 }
 
 function getStudentHomeworkSortDate(assignment: HomeworkAssignment) {
@@ -783,27 +794,6 @@ function sortStudentHomeworkByRelevance(assignments: HomeworkAssignment[]) {
   });
 }
 
-function filterStudentHomework(
-  assignments: HomeworkAssignment[],
-  filter: StudentHomeworkHistoryFilter,
-) {
-  if (filter === "all") {
-    return assignments;
-  }
-
-  if (filter === "open") {
-    return assignments.filter(isOpenStudentHomework);
-  }
-
-  if (filter === "overdue") {
-    return assignments.filter((assignment) => assignment.isOverdue);
-  }
-
-  return assignments.filter(
-    (assignment) => assignment.submission?.status === "done",
-  );
-}
-
 export async function getTeacherHomeworkAssignments(limit = 20) {
   const classes = await getManageableHomeworkClasses();
   const rows = await getHomeworkRows(
@@ -815,6 +805,7 @@ export async function getTeacherHomeworkAssignments(limit = 20) {
     getActiveStudentsByClassIds([...new Set(rows.map((row) => row.class_id))]),
     getSubmissionsByHomeworkIds(rows.map((row) => row.id)),
   ]);
+  const tagsByHomework = await getTagsForHomeworkIds(rows.map((row) => row.id));
 
   return rows.map((row) => {
     const details = mergeStudentSubmissionDetails(
@@ -822,7 +813,7 @@ export async function getTeacherHomeworkAssignments(limit = 20) {
       submissionsByHomework.get(row.id) ?? [],
     );
 
-    return toHomeworkAssignment(row, details);
+    return toHomeworkAssignment(row, details, undefined, tagsByHomework.get(row.id));
   });
 }
 
@@ -839,6 +830,7 @@ export async function getStudentHomeworkAssignments(
   const submissionsByHomework = await getSubmissionsByHomeworkIds(
     rows.map((row) => row.id),
   );
+  const tagsByHomework = await getTagsForHomeworkIds(rows.map((row) => row.id));
   const user = await getCurrentUser();
 
   return rows.map((row) => {
@@ -848,7 +840,12 @@ export async function getStudentHomeworkAssignments(
           ?.find((item) => item.studentId === user.id)
       : undefined;
 
-    return toHomeworkAssignment(row, [], submission);
+    return toHomeworkAssignment(
+      row,
+      [],
+      submission,
+      tagsByHomework.get(row.id),
+    );
   });
 }
 
@@ -856,17 +853,7 @@ export async function getManageableHomeworkAssignments() {
   return getTeacherHomeworkAssignments();
 }
 
-export async function getOpenStudentHomework(limit = 10, classIds?: string[]) {
-  const classes = classIds ? [] : await getStudentClasses();
-  const homework = await getStudentHomeworkAssignments(
-    classIds ?? classes.map((classSummary) => classSummary.id),
-    Math.max(limit * 3, limit),
-  );
-
-  return filterStudentHomework(homework, "open").slice(0, limit);
-}
-
-export async function getStudentHomeworkHistory(
+export async function getStudentHomeworkList(
   limit = 100,
   classIds?: string[],
 ) {
@@ -912,11 +899,13 @@ export async function createHomeworkAssignment(input: HomeworkAssignmentInput) {
     updated_by: user.id,
     visible_from: input.visibleFrom ?? new Date().toISOString(),
   };
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("homework_assignments")
-    .insert(insertPayload);
+    .insert(insertPayload)
+    .select("id")
+    .single();
 
-  if (error) {
+  if (error || !data) {
     console.error("createHomeworkAssignment failed", {
       error: {
         code: error.code,
@@ -942,7 +931,20 @@ export async function createHomeworkAssignment(input: HomeworkAssignmentInput) {
     });
 
     return {
-      errorMessage: error.message,
+      errorMessage: error?.message ?? "No homework row returned.",
+      success: false,
+    };
+  }
+
+  const tagsSaved = await replaceHomeworkTags(
+    data.id as string,
+    input.classId,
+    input.tags ?? [],
+  );
+
+  if (!tagsSaved) {
+    return {
+      errorMessage: "Failed to save homework tags.",
       success: false,
     };
   }
@@ -969,7 +971,7 @@ export async function updateHomeworkAssignment(
   }
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("homework_assignments")
     .update({
       allow_late_submission: input.allowLateSubmission,
@@ -989,9 +991,15 @@ export async function updateHomeworkAssignment(
       visible_from: input.visibleFrom ?? new Date().toISOString(),
     })
     .eq("id", id)
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .select("id")
+    .maybeSingle();
 
-  return !error;
+  if (error || !data) {
+    return false;
+  }
+
+  return replaceHomeworkTags(id, input.classId, input.tags ?? []);
 }
 
 export async function setHomeworkHidden(id: string, isHidden: boolean) {

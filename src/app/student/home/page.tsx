@@ -1,14 +1,21 @@
 import { PageHeader } from "@/components/app/PageHeader";
 import { StudentHomeFeed } from "@/components/student/StudentHomeFeed";
-import { getLatestStudentAnnouncements } from "@/lib/db/announcements";
-import { getStudentClasses } from "@/lib/db/classes";
-import { getOpenStudentHomework } from "@/lib/db/homework";
+import { getCurrentUser } from "@/lib/auth/getCurrentUser";
+import { getStudentAnnouncements } from "@/lib/db/announcements";
+import { getSelectedStudentClass } from "@/lib/db/classes";
+import { getStudentHomeworkList } from "@/lib/db/homework";
+
+const STUDENT_HOME_PREVIEW_LIMIT = 3;
 
 export default async function StudentHomePage() {
-  const [classes, announcements, homework] = await Promise.all([
-    getStudentClasses(),
-    getLatestStudentAnnouncements(),
-    getOpenStudentHomework(),
+  const user = await getCurrentUser();
+  const { classes, selectedClass } = user
+    ? await getSelectedStudentClass(user.id)
+    : { classes: [], selectedClass: undefined };
+  const selectedClassIds = selectedClass ? [selectedClass.id] : [];
+  const [announcements, homework] = await Promise.all([
+    getStudentAnnouncements(selectedClassIds, STUDENT_HOME_PREVIEW_LIMIT),
+    getStudentHomeworkList(STUDENT_HOME_PREVIEW_LIMIT, selectedClassIds),
   ]);
 
   return (
@@ -16,7 +23,7 @@ export default async function StudentHomePage() {
       <PageHeader
         eyebrow="תלמיד/ה"
         title="בית"
-        description="הכיתות שלך, הודעות אחרונות ושיעורי בית פתוחים."
+        description="הכיתות שלך, הודעות אחרונות ושיעורי בית."
       />
       <StudentHomeFeed
         announcements={announcements}

@@ -29,8 +29,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           מפת מתמטיקה כיתתית
         </h1>
         <p className="mt-3 text-sm leading-6 text-stone-600">
-          התחברו כמורה באמצעות אימייל וסיסמה, או כתלמיד/ה באמצעות קוד כיתה,
-          קוד תלמיד וסיסמה.
+          התחברו כמורה באמצעות אימייל וסיסמה, או כתלמיד/ה באמצעות שם משתמש
+          וסיסמה.
         </p>
         <LoginForm initialError={getInitialError(params?.error)} />
       </section>

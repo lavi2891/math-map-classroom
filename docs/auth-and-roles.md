@@ -8,6 +8,22 @@ Source of truth:
 
 This project uses Supabase Auth for identity and `public.profiles` for profile metadata. Authorization is contextual and class-based through `public.class_memberships`.
 
+## Login And Student Class Context
+
+Teacher login uses email and password.
+
+Normal student login uses username and password. Class code is not part of normal student login. The app generates the Supabase Auth email from the normalized username:
+
+- `${normalizedUsername}@students.local`
+
+Student class access is loaded after login from active `class_memberships` rows where `role = 'student'`.
+
+- If no active student membership exists, the app shows: `לא נמצא שיוך לכיתה. פנה למורה.`
+- If one active student membership exists, the app uses that class automatically.
+- If more than one active student membership exists, the student layout shows a `כיתה` dropdown in the header.
+
+The selected class is stored in a cookie. If the cookie is missing or does not match one of the student's active memberships, the app uses the first active student class. The selected class context filters student announcements and homework, and should be used by class-aware student knowledge and practice features as they become backed by class data.
+
 ## Architectural Decision
 
 Roles are not global user properties.
@@ -183,12 +199,14 @@ Managers can:
 - Set `allow_late_submission` to control whether students may submit after the due date.
 - Set `late_submission_until` as an optional final cutoff for late submissions.
 - View submission summaries and per-student submission details.
+- Create class-specific homework tags and attach/remove tags on homework in their classes.
 
 Managers must be authorized through `class_memberships`. Do not use `profiles.role`, `classes.teacher_id`, `class_students`, a service role key, or any RLS bypass for homework management.
 
 ### Who can submit homework?
 
 Students can view and submit only visible homework in classes where they have active `student` membership.
+Students can view tags attached to visible homework. Students cannot create, edit, attach, or remove homework tags.
 
 Visible homework means:
 
