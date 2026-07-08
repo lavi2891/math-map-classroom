@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageSection } from "@/components/app/PageSection";
+import { PasswordChangeForm } from "@/components/profile/PasswordChangeForm";
 import { ROUTES } from "@/lib/constants/routes";
 import { getStudentProfileCards } from "@/lib/db/knowledge";
 
@@ -14,6 +15,7 @@ export default function StudentProfilePage() {
         description="פרטי תלמיד/ה, יעדים אישיים והעדפות למידה."
         cards={cards}
       />
+      <PasswordChangeForm />
       <Link
         className="block min-h-11 rounded-md border border-stone-200 px-4 py-2 text-center text-sm font-bold text-stone-700 transition hover:bg-stone-50"
         href={ROUTES.logout}

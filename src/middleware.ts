@@ -11,6 +11,10 @@ type MembershipRow = {
   active: boolean;
 };
 
+type ProfilePasswordRow = {
+  must_change_password: boolean | null;
+};
+
 function copyAuthCookies(source: NextResponse, target: NextResponse) {
   source.cookies.getAll().forEach((cookie) => {
     target.cookies.set(cookie);
@@ -36,6 +40,17 @@ function redirectToNoMembership(request: NextRequest, response: NextResponse) {
   const redirectUrl = request.nextUrl.clone();
   redirectUrl.pathname = ROUTES.login;
   redirectUrl.searchParams.set("error", "no-membership");
+
+  const redirectResponse = NextResponse.redirect(redirectUrl);
+  copyAuthCookies(response, redirectResponse);
+
+  return redirectResponse;
+}
+
+function redirectToChangePassword(request: NextRequest, response: NextResponse) {
+  const redirectUrl = request.nextUrl.clone();
+  redirectUrl.pathname = ROUTES.changePassword;
+  redirectUrl.search = "";
 
   const redirectResponse = NextResponse.redirect(redirectUrl);
   copyAuthCookies(response, redirectResponse);
@@ -77,6 +92,16 @@ export async function middleware(request: NextRequest) {
 
   if (!appMode) {
     return redirectToNoMembership(request, response);
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("must_change_password")
+    .eq("id", user.id)
+    .maybeSingle<ProfilePasswordRow>();
+
+  if (profile?.must_change_password) {
+    return redirectToChangePassword(request, response);
   }
 
   if (

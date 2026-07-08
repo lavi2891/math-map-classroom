@@ -5,6 +5,7 @@ Source of truth:
 - `supabase/migrations/0001_current_schema_reference.sql`
 - `supabase/migrations/0002_announcements_workflow.sql`
 - `supabase/migrations/0003_homework_lifecycle.sql`
+- `supabase/migrations/0006_student_management.sql`
 
 This document describes the current effective Supabase schema after the contextual class role migration in that file. Earlier definitions in the same migration create the first version of the schema, then the later section replaces the global/legacy class role model.
 
@@ -48,10 +49,14 @@ Columns:
 - `id uuid primary key references auth.users(id)`
 - `display_name text`
 - `username text unique`
+- `must_change_password boolean default false`
+- `password_changed_at timestamptz`
+- `created_by uuid references profiles(id)`
+- `archived_at timestamptz`
 - `created_at timestamptz`
 - `updated_at timestamptz`
 
-Important: `profiles.username` is stable identity metadata for the user. Normal student auth emails are generated from the normalized username. There is no effective `role` column; do not model authorization from `profiles.role`.
+Important: `profiles.username` is stable identity metadata for the user. Normal student auth emails are generated from the normalized username. `must_change_password` is used for temporary-password and first-login flows. Temporary passwords are never stored in the database. There is no effective `role` column; do not model authorization from `profiles.role`.
 
 ### `classes`
 
@@ -93,6 +98,25 @@ Indexes:
 - `role`
 
 Use this table for all class-level access checks, staff views, student enrollment, current student class context, and ownership.
+
+### `student_password_events`
+
+Audit table for student password-management lifecycle events. It records that a password event happened, but never stores the plain temporary password.
+
+Columns:
+
+- `id uuid primary key`
+- `student_id uuid references profiles(id)`
+- `class_id uuid null references classes(id)`
+- `action text` - one of `created`, `reset`, `forced_change`, or `changed`.
+- `created_by uuid references profiles(id)`
+- `created_at timestamptz`
+
+Current app usage:
+
+- Teachers with active `owner` or `teacher` membership can create students, reset temporary passwords, and force password changes for students in their classes.
+- Logged-in users can change their own password from the required password-change wall or profile page.
+- A temporary password is returned to the UI only immediately after creation/reset so it can be printed or copied.
 
 ### `announcements`
 

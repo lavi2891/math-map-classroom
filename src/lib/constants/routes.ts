@@ -1,4 +1,5 @@
 export const ROUTES = {
+  changePassword: "/change-password",
   login: "/login",
   logout: "/logout",
   studentHome: "/student/home",

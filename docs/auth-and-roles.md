@@ -5,6 +5,7 @@ Source of truth:
 - `supabase/migrations/0001_current_schema_reference.sql`
 - `supabase/migrations/0002_announcements_workflow.sql`
 - `supabase/migrations/0003_homework_lifecycle.sql`
+- `supabase/migrations/0006_student_management.sql`
 
 This project uses Supabase Auth for identity and `public.profiles` for profile metadata. Authorization is contextual and class-based through `public.class_memberships`.
 
@@ -23,6 +24,8 @@ Student class access is loaded after login from active `class_memberships` rows 
 - If more than one active student membership exists, the student layout shows a `כיתה` dropdown in the header.
 
 The selected class is stored in a cookie. If the cookie is missing or does not match one of the student's active memberships, the app uses the first active student class. The selected class context filters student announcements and homework, and should be used by class-aware student knowledge and practice features as they become backed by class data.
+
+Student accounts created by teachers use a temporary password and `profiles.must_change_password = true`. Users with this flag are redirected to `/change-password` from protected student and teacher pages until they choose a new password.
 
 ## Architectural Decision
 
@@ -202,6 +205,25 @@ Managers can:
 - Create class-specific homework tags and attach/remove tags on homework in their classes.
 
 Managers must be authorized through `class_memberships`. Do not use `profiles.role`, `classes.teacher_id`, `class_students`, a service role key, or any RLS bypass for homework management.
+
+### Who can manage students?
+
+Student managers are active `owner` and `teacher` memberships in the target class.
+
+Managers can:
+
+- View active students in the class.
+- Create a student account with username-based Supabase Auth email.
+- Create or update the student's `profiles` row.
+- Create or update the student's `class_memberships` row for that class.
+- Generate and display a temporary password immediately after creation.
+- Reset a student's temporary password.
+- Set `profiles.must_change_password = true` to force a password change.
+- Print or copy temporary login slips immediately after creation/reset.
+
+Temporary passwords are not stored in the database. Admin Auth calls for student creation and reset must happen only in server code with the Supabase secret key. Browser code must never import the admin client or receive the service/secret key.
+
+Students and teachers can change their own password from their profile page. When a user changes password successfully, the app clears `profiles.must_change_password` and updates `profiles.password_changed_at`.
 
 ### Who can submit homework?
 
