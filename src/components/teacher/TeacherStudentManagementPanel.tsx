@@ -1,10 +1,13 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
+  attachExistingStudentAction,
   createStudentAction,
   forcePasswordChangeAction,
+  removeStudentFromClassAction,
   resetStudentPasswordAction,
+  searchExistingStudentAction,
   type StudentManagementActionState,
 } from "@/app/teacher/classes/[classId]/students/actions";
 import type { ManagedStudent, StudentLoginSlip } from "@/lib/db/studentManagement";
@@ -83,7 +86,15 @@ function LoginSlipPanel({ slip }: { slip: StudentLoginSlip }) {
   );
 }
 
-function CreateStudentForm({ classId }: { classId: string }) {
+function CreateStudentForm({
+  classId,
+  onCancel,
+  onSlip,
+}: {
+  classId: string;
+  onCancel: () => void;
+  onSlip: (slip: StudentLoginSlip) => void;
+}) {
   const [state, formAction, pending] = useActionState(
     createStudentAction,
     initialState,
@@ -91,64 +102,36 @@ function CreateStudentForm({ classId }: { classId: string }) {
   const [temporaryPassword, setTemporaryPassword] = useState(() =>
     generateReadablePassword(),
   );
-  const [displayName, setDisplayName] = useState("");
-  const suggestedUsername = useMemo(() => {
-    const base = displayName
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9_-]/g, "");
 
-    return base || "s001";
-  }, [displayName]);
+  useEffect(() => {
+    if (state.slip && !state.error) {
+      onSlip(state.slip);
+      onCancel();
+    }
+  }, [onCancel, onSlip, state.error, state.slip]);
 
   return (
     <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
-      <h2 className="text-lg font-bold text-stone-950">הוספת תלמיד</h2>
+      <h2 className="text-lg font-bold text-stone-950">תלמיד חדש</h2>
       <form action={formAction} className="mt-4 grid gap-3">
         <input name="classId" type="hidden" value={classId} />
+
         <label className="grid gap-1 text-sm font-semibold text-stone-800">
-          שם תלמיד
+          שם משתמש
           <input
-            className="min-h-11 rounded-md border border-stone-200 px-3 text-base font-normal"
-            name="displayName"
-            onChange={(event) => setDisplayName(event.target.value)}
+            className="min-h-11 rounded-md border border-stone-200 px-3 text-left text-base font-normal"
+            dir="ltr"
+            name="username"
             required
             type="text"
           />
         </label>
 
         <label className="grid gap-1 text-sm font-semibold text-stone-800">
-          שם משתמש
-          <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-            <input
-              className="min-h-11 rounded-md border border-stone-200 px-3 text-left text-base font-normal ltr"
-              dir="ltr"
-              name="username"
-              required
-              type="text"
-            />
-            <button
-              className="min-h-11 rounded-md border border-stone-200 px-3 text-sm font-bold text-stone-700"
-              onClick={(event) => {
-                const form = event.currentTarget.form;
-                const input = form?.elements.namedItem("username");
-                if (input instanceof HTMLInputElement) {
-                  input.value = suggestedUsername;
-                }
-              }}
-              type="button"
-            >
-              הצע שם משתמש
-            </button>
-          </div>
-        </label>
-
-        <label className="grid gap-1 text-sm font-semibold text-stone-800">
-          קוד תלמיד בכיתה
+          שם תצוגה / שם תלמיד
           <input
             className="min-h-11 rounded-md border border-stone-200 px-3 text-base font-normal"
-            name="studentCode"
+            name="displayName"
             type="text"
           />
         </label>
@@ -181,26 +164,119 @@ function CreateStudentForm({ classId }: { classId: string }) {
             {state.error}
           </p>
         ) : null}
-        {state.message ? (
-          <p className="rounded-md bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-800">
-            {state.message}
-          </p>
-        ) : null}
 
+        <div className="grid gap-2 sm:grid-cols-2">
+          <button
+            className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-stone-700"
+            onClick={onCancel}
+            type="button"
+          >
+            ביטול
+          </button>
+          <button
+            className="min-h-11 rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white disabled:bg-stone-300"
+            disabled={pending}
+            type="submit"
+          >
+            יצירת תלמיד
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function AttachExistingUserForm({
+  classId,
+  onCancel,
+}: {
+  classId: string;
+  onCancel: () => void;
+}) {
+  const [searchState, searchAction, searchPending] = useActionState(
+    searchExistingStudentAction,
+    initialState,
+  );
+  const [attachState, attachAction, attachPending] = useActionState(
+    attachExistingStudentAction,
+    initialState,
+  );
+
+  useEffect(() => {
+    if (attachState.message && !attachState.error) {
+      onCancel();
+    }
+  }, [attachState.error, attachState.message, onCancel]);
+
+  return (
+    <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
+      <h2 className="text-lg font-bold text-stone-950">צרף משתמש קיים</h2>
+      <form action={searchAction} className="mt-4 grid gap-3">
+        <input name="classId" type="hidden" value={classId} />
+        <label className="grid gap-1 text-sm font-semibold text-stone-800">
+          שם משתמש
+          <input
+            className="min-h-11 rounded-md border border-stone-200 px-3 text-left text-base font-normal"
+            dir="ltr"
+            name="username"
+            required
+            type="text"
+          />
+        </label>
         <button
-          className="min-h-11 rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white disabled:bg-stone-300"
-          disabled={pending}
+          className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-stone-700 disabled:bg-stone-100"
+          disabled={searchPending}
           type="submit"
         >
-          יצירת תלמיד
+          חפש משתמש
         </button>
       </form>
 
-      <p className="mt-3 text-xs font-semibold text-stone-500">
-        ייבוא CSV יתווסף בהמשך
-      </p>
+      {searchState.error ? (
+        <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+          {searchState.error}
+        </p>
+      ) : null}
 
-      {state.slip ? <div className="mt-4"><LoginSlipPanel slip={state.slip} /></div> : null}
+      {searchState.profile ? (
+        <div className="mt-3 rounded-md border border-stone-200 p-3">
+          <p className="font-bold text-stone-950">
+            {searchState.profile.displayName}
+          </p>
+          <p className="text-sm text-stone-600">
+            {searchState.profile.username}
+          </p>
+          <form action={attachAction} className="mt-3">
+            <input name="classId" type="hidden" value={classId} />
+            <input
+              name="username"
+              type="hidden"
+              value={searchState.profile.username}
+            />
+            <button
+              className="min-h-11 w-full rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white disabled:bg-stone-300"
+              disabled={attachPending}
+              type="submit"
+            >
+              צרף לכיתה
+            </button>
+          </form>
+        </div>
+      ) : null}
+
+      {attachState.error ? (
+        <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+          {attachState.error}
+        </p>
+      ) : null}
+
+      <button
+        className="mt-3 min-h-11 w-full rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-stone-700"
+        onClick={onCancel}
+        type="button"
+      >
+        ביטול
+      </button>
     </section>
   );
 }
@@ -220,13 +296,21 @@ function StudentActions({
     forcePasswordChangeAction,
     initialState,
   );
+  const [removeState, removeAction, removePending] = useActionState(
+    removeStudentFromClassAction,
+    initialState,
+  );
   const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   return (
     <div className="mt-3 grid gap-2">
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 sm:grid-cols-3">
         {confirmReset ? (
-          <form action={resetAction} className="grid gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 sm:col-span-2">
+          <form
+            action={resetAction}
+            className="grid gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 sm:col-span-3"
+          >
             <input name="classId" type="hidden" value={classId} />
             <input name="studentId" type="hidden" value={student.userId} />
             <p className="text-sm font-bold text-amber-950">לאפס סיסמה?</p>
@@ -271,16 +355,57 @@ function StudentActions({
             דרוש החלפת סיסמה
           </button>
         </form>
+
+        {confirmRemove ? (
+          <form
+            action={removeAction}
+            className="grid gap-2 rounded-md border border-red-200 bg-red-50 p-3 sm:col-span-3"
+          >
+            <input name="classId" type="hidden" value={classId} />
+            <input name="studentId" type="hidden" value={student.userId} />
+            <p className="text-sm font-bold text-red-950">
+              להסיר את התלמיד מהכיתה?
+            </p>
+            <p className="text-sm leading-6 text-red-900">
+              התלמיד יוסר מהכיתה הזו ולא יראה יותר את התוכן שלה. המשתמש
+              וההיסטוריה שלו לא יימחקו מהמערכת.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                className="min-h-11 rounded-md border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-700"
+                onClick={() => setConfirmRemove(false)}
+                type="button"
+              >
+                ביטול
+              </button>
+              <button
+                className="min-h-11 rounded-md bg-red-700 px-4 py-2 text-sm font-bold text-white disabled:bg-stone-300"
+                disabled={removePending}
+                type="submit"
+              >
+                הסר מהכיתה
+              </button>
+            </div>
+          </form>
+        ) : (
+          <button
+            className="min-h-11 rounded-md border border-red-200 px-4 py-2 text-sm font-bold text-red-700"
+            onClick={() => setConfirmRemove(true)}
+            type="button"
+          >
+            הסר מהכיתה
+          </button>
+        )}
       </div>
 
-      {resetState.error || forceState.error ? (
+      {resetState.error || forceState.error || removeState.error ? (
         <p className="rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
-          {resetState.error ?? forceState.error}
+          {resetState.error ?? forceState.error ?? removeState.error}
         </p>
       ) : null}
-      {forceState.message ? (
+      {forceState.message || removeState.message ? (
         <p className="rounded-md bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-800">
-          {forceState.message}
+          {forceState.message ?? removeState.message}
         </p>
       ) : null}
       {resetState.slip ? <LoginSlipPanel slip={resetState.slip} /> : null}
@@ -293,9 +418,44 @@ export function TeacherStudentManagementPanel({
   className,
   students,
 }: TeacherStudentManagementPanelProps) {
+  const [openPanel, setOpenPanel] = useState<"create" | "attach" | null>(null);
+  const [latestSlip, setLatestSlip] = useState<StudentLoginSlip | null>(null);
+
   return (
     <div className="space-y-4">
-      <CreateStudentForm classId={classId} />
+      <div className="grid gap-2 sm:grid-cols-2">
+        <button
+          className="min-h-11 rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white"
+          onClick={() => setOpenPanel("create")}
+          type="button"
+        >
+          + תלמיד חדש
+        </button>
+        <button
+          className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-stone-700"
+          onClick={() => setOpenPanel("attach")}
+          type="button"
+        >
+          צרף משתמש קיים
+        </button>
+      </div>
+
+      {openPanel === "create" ? (
+        <CreateStudentForm
+          classId={classId}
+          onCancel={() => setOpenPanel(null)}
+          onSlip={setLatestSlip}
+        />
+      ) : null}
+
+      {openPanel === "attach" ? (
+        <AttachExistingUserForm
+          classId={classId}
+          onCancel={() => setOpenPanel(null)}
+        />
+      ) : null}
+
+      {latestSlip ? <LoginSlipPanel slip={latestSlip} /> : null}
 
       <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
         <div>
@@ -315,21 +475,13 @@ export function TeacherStudentManagementPanel({
                     <h3 className="font-bold text-stone-950">
                       {student.displayName}
                     </h3>
-                    <p className="text-sm text-stone-600">
-                      {student.username ?? "ללא שם משתמש"} · קוד{" "}
-                      {student.studentCode ?? "לא הוגדר"}
-                    </p>
+                    <p className="text-sm text-stone-600">{student.username}</p>
                   </div>
-                  <div className="flex flex-wrap gap-2 text-xs font-bold">
-                    <span className="rounded-full bg-stone-100 px-2 py-1 text-stone-700">
-                      {student.active ? "פעיל" : "לא פעיל"}
+                  {student.mustChangePassword ? (
+                    <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-800">
+                      נדרשת החלפת סיסמה
                     </span>
-                    {student.mustChangePassword ? (
-                      <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">
-                        נדרשת החלפת סיסמה
-                      </span>
-                    ) : null}
-                  </div>
+                  ) : null}
                 </div>
                 <p className="mt-2 text-xs text-stone-500">
                   החלפת סיסמה אחרונה: {formatDate(student.passwordChangedAt)}
@@ -341,7 +493,7 @@ export function TeacherStudentManagementPanel({
           </div>
         ) : (
           <p className="mt-4 rounded-md bg-stone-50 px-3 py-4 text-sm text-stone-600">
-            עדיין אין תלמידים בכיתה.
+            עדיין אין תלמידים פעילים בכיתה.
           </p>
         )}
       </section>

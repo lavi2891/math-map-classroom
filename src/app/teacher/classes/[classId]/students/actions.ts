@@ -2,18 +2,21 @@
 
 import { revalidatePath } from "next/cache";
 import {
+  attachExistingStudentToClass,
   createManagedStudent,
   forceManagedStudentPasswordChange,
-  generateTemporaryPassword,
+  removeStudentFromClass,
   resetManagedStudentPassword,
+  searchStudentProfileForClass,
   type StudentLoginSlip,
+  type StudentProfileSearchResult,
 } from "@/lib/db/studentManagement";
 
 export type StudentManagementActionState = {
   error?: string;
   message?: string;
+  profile?: StudentProfileSearchResult;
   slip?: StudentLoginSlip;
-  temporaryPassword?: string;
 };
 
 function getFormString(formData: FormData, field: string) {
@@ -26,6 +29,11 @@ function getClassPath(classId: string) {
   return `/teacher/classes/${classId}/students`;
 }
 
+function revalidateStudents(classId: string) {
+  revalidatePath(getClassPath(classId));
+  revalidatePath("/teacher/classes");
+}
+
 export async function createStudentAction(
   _previousState: StudentManagementActionState,
   formData: FormData,
@@ -34,7 +42,6 @@ export async function createStudentAction(
   const result = await createManagedStudent({
     classId,
     displayName: getFormString(formData, "displayName"),
-    studentCode: getFormString(formData, "studentCode"),
     temporaryPassword: getFormString(formData, "temporaryPassword"),
     username: getFormString(formData, "username"),
   });
@@ -43,12 +50,49 @@ export async function createStudentAction(
     return { error: result.error ?? "לא הצלחנו ליצור תלמיד." };
   }
 
-  revalidatePath(getClassPath(classId));
-  revalidatePath("/teacher/classes");
+  revalidateStudents(classId);
 
   return {
     message: "התלמיד נוצר בהצלחה.",
     slip: result.slip,
+  };
+}
+
+export async function searchExistingStudentAction(
+  _previousState: StudentManagementActionState,
+  formData: FormData,
+): Promise<StudentManagementActionState> {
+  const result = await searchStudentProfileForClass(
+    getFormString(formData, "classId"),
+    getFormString(formData, "username"),
+  );
+
+  if (!result.success) {
+    return { error: result.error ?? "לא נמצא משתמש בשם זה." };
+  }
+
+  return { profile: result.profile };
+}
+
+export async function attachExistingStudentAction(
+  _previousState: StudentManagementActionState,
+  formData: FormData,
+): Promise<StudentManagementActionState> {
+  const classId = getFormString(formData, "classId");
+  const result = await attachExistingStudentToClass(
+    classId,
+    getFormString(formData, "username"),
+  );
+
+  if (!result.success) {
+    return { error: result.error ?? "לא הצלחנו לצרף את המשתמש לכיתה." };
+  }
+
+  revalidateStudents(classId);
+
+  return {
+    message: result.message ?? "המשתמש צורף לכיתה.",
+    profile: result.profile,
   };
 }
 
@@ -64,7 +108,7 @@ export async function resetStudentPasswordAction(
     return { error: result.error ?? "לא הצלחנו לאפס סיסמה." };
   }
 
-  revalidatePath(getClassPath(classId));
+  revalidateStudents(classId);
 
   return {
     message: "הסיסמה אופסה.",
@@ -84,11 +128,24 @@ export async function forcePasswordChangeAction(
     return { error: result.error ?? "לא הצלחנו לדרוש החלפת סיסמה." };
   }
 
-  revalidatePath(getClassPath(classId));
+  revalidateStudents(classId);
 
   return { message: "התלמיד יתבקש להחליף סיסמה." };
 }
 
-export async function generateTemporaryPasswordAction(): Promise<StudentManagementActionState> {
-  return { temporaryPassword: generateTemporaryPassword() };
+export async function removeStudentFromClassAction(
+  _previousState: StudentManagementActionState,
+  formData: FormData,
+): Promise<StudentManagementActionState> {
+  const classId = getFormString(formData, "classId");
+  const studentId = getFormString(formData, "studentId");
+  const result = await removeStudentFromClass(classId, studentId);
+
+  if (!result.success) {
+    return { error: result.error ?? "לא הצלחנו להסיר את התלמיד מהכיתה." };
+  }
+
+  revalidateStudents(classId);
+
+  return { message: result.message ?? "התלמיד הוסר מהכיתה." };
 }

@@ -6,6 +6,7 @@ Source of truth:
 - `supabase/migrations/0002_announcements_workflow.sql`
 - `supabase/migrations/0003_homework_lifecycle.sql`
 - `supabase/migrations/0006_student_management.sql`
+- `supabase/migrations/0007_refine_student_management.sql`
 
 This project uses Supabase Auth for identity and `public.profiles` for profile metadata. Authorization is contextual and class-based through `public.class_memberships`.
 
@@ -16,6 +17,8 @@ Teacher login uses email and password.
 Normal student login uses username and password. Class code is not part of normal student login. The app generates the Supabase Auth email from the normalized username:
 
 - `${normalizedUsername}@students.local`
+
+`class_memberships.student_code` is not part of login and is not required in the teacher student-management UI.
 
 Student class access is loaded after login from active `class_memberships` rows where `role = 'student'`.
 
@@ -216,12 +219,16 @@ Managers can:
 - Create a student account with username-based Supabase Auth email.
 - Create or update the student's `profiles` row.
 - Create or update the student's `class_memberships` row for that class.
+- Attach an existing username to the class through a `class_memberships` row.
 - Generate and display a temporary password immediately after creation.
 - Reset a student's temporary password.
 - Set `profiles.must_change_password = true` to force a password change.
+- Remove a student from a class by setting `class_memberships.active = false`.
 - Print or copy temporary login slips immediately after creation/reset.
 
 Temporary passwords are not stored in the database. Admin Auth calls for student creation and reset must happen only in server code with the Supabase secret key. Browser code must never import the admin client or receive the service/secret key.
+
+Removing a student from a class does not delete `auth.users`, `profiles`, homework submissions, homework files, practice sessions, or self-assessments. It only deactivates that class membership. The same user can remain active in other classes or be reattached later.
 
 Students and teachers can change their own password from their profile page. When a user changes password successfully, the app clears `profiles.must_change_password` and updates `profiles.password_changed_at`.
 

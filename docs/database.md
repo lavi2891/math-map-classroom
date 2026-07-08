@@ -6,6 +6,7 @@ Source of truth:
 - `supabase/migrations/0002_announcements_workflow.sql`
 - `supabase/migrations/0003_homework_lifecycle.sql`
 - `supabase/migrations/0006_student_management.sql`
+- `supabase/migrations/0007_refine_student_management.sql`
 
 This document describes the current effective Supabase schema after the contextual class role migration in that file. Earlier definitions in the same migration create the first version of the schema, then the later section replaces the global/legacy class role model.
 
@@ -47,7 +48,7 @@ One row per `auth.users` user.
 Columns:
 
 - `id uuid primary key references auth.users(id)`
-- `display_name text`
+- `display_name text` - optional display name. If missing, the UI falls back to the username.
 - `username text unique`
 - `must_change_password boolean default false`
 - `password_changed_at timestamptz`
@@ -82,8 +83,8 @@ Columns:
 - `class_id uuid references classes(id)`
 - `user_id uuid references profiles(id)`
 - `role public.class_role`
-- `student_code text`
-- `active boolean`
+- `student_code text` - optional legacy/internal per-class code. Normal login and teacher student-management UI do not require it.
+- `active boolean` - `false` means the user was removed from the class without deleting the user, profile, submissions, files, practice sessions, or self-assessments.
 - `created_at timestamptz`
 - `updated_at timestamptz`
 
@@ -97,7 +98,7 @@ Indexes:
 - `class_id`
 - `role`
 
-Use this table for all class-level access checks, staff views, student enrollment, current student class context, and ownership.
+Use this table for all class-level access checks, staff views, student enrollment, current student class context, and ownership. Users can be attached to multiple classes through separate active `class_memberships` rows.
 
 ### `student_password_events`
 
@@ -114,7 +115,7 @@ Columns:
 
 Current app usage:
 
-- Teachers with active `owner` or `teacher` membership can create students, reset temporary passwords, and force password changes for students in their classes.
+- Teachers with active `owner` or `teacher` membership can create students, attach existing users to a class, reset temporary passwords, force password changes, and remove students from a class by deactivating the membership.
 - Logged-in users can change their own password from the required password-change wall or profile page.
 - A temporary password is returned to the UI only immediately after creation/reset so it can be printed or copied.
 

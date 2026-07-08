@@ -3,14 +3,11 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type ManagedStudent = {
-  active: boolean;
-  archivedAt?: string;
   displayName: string;
   mustChangePassword: boolean;
   passwordChangedAt?: string;
-  studentCode?: string;
   userId: string;
-  username?: string;
+  username: string;
 };
 
 export type StudentLoginSlip = {
@@ -19,44 +16,61 @@ export type StudentLoginSlip = {
   username: string;
 };
 
+export type StudentProfileSearchResult = {
+  displayName: string;
+  userId: string;
+  username: string;
+};
+
 export type CreateStudentInput = {
   classId: string;
-  displayName: string;
-  studentCode?: string;
+  displayName?: string;
   temporaryPassword?: string;
   username: string;
 };
 
 export type StudentMutationResult = {
   error?: string;
+  message?: string;
+  profile?: StudentProfileSearchResult;
   slip?: StudentLoginSlip;
   success: boolean;
 };
 
+type ProfileRow = {
+  display_name: string | null;
+  id: string;
+  username: string | null;
+};
+
 type MembershipStudentRow = {
-  active: boolean;
   profiles:
     | {
-        archived_at: string | null;
         display_name: string | null;
         must_change_password: boolean | null;
         password_changed_at: string | null;
         username: string | null;
       }
     | {
-        archived_at: string | null;
         display_name: string | null;
         must_change_password: boolean | null;
         password_changed_at: string | null;
         username: string | null;
       }[]
     | null;
-  student_code: string | null;
   user_id: string;
 };
 
+type SupabaseAdminClient = ReturnType<typeof createSupabaseAdminClient>;
+
 function getJoined<T>(value: T | T[] | null) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function getDisplayName(displayName: string | null | undefined, username: string) {
+  const trimmedName = displayName?.trim();
+
+  return trimmedName || `תלמיד ${username}`;
 }
 
 export function normalizeStudentUsername(username: string) {
@@ -110,59 +124,265 @@ export async function getManagedStudents(classId: string) {
   const { data, error } = await supabase
     .from("class_memberships")
     .select(
-      "user_id, student_code, active, profiles(display_name, username, must_change_password, password_changed_at, archived_at)",
+      "user_id, profiles(display_name, username, must_change_password, password_changed_at)",
     )
     .eq("class_id", classId)
     .eq("role", "student")
-    .order("student_code", { ascending: true });
+    .eq("active", true)
+    .order("created_at", { ascending: true });
 
   if (error || !data) {
     return [];
   }
 
-  return (data as unknown as MembershipStudentRow[]).map<ManagedStudent>(
+  return (data as unknown as MembershipStudentRow[]).flatMap<ManagedStudent>(
     (row) => {
       const profile = getJoined(row.profiles);
+      const username = profile?.username?.trim();
 
-      return {
-        active: row.active,
-        archivedAt: profile?.archived_at ?? undefined,
-        displayName:
-          profile?.display_name ?? profile?.username ?? "תלמיד/ה",
-        mustChangePassword: profile?.must_change_password ?? false,
-        passwordChangedAt: profile?.password_changed_at ?? undefined,
-        studentCode: row.student_code ?? undefined,
-        userId: row.user_id,
-        username: profile?.username ?? undefined,
-      };
+      if (!username) {
+        return [];
+      }
+
+      return [
+        {
+          displayName: getDisplayName(profile?.display_name, username),
+          mustChangePassword: profile?.must_change_password ?? false,
+          passwordChangedAt: profile?.password_changed_at ?? undefined,
+          userId: row.user_id,
+          username,
+        },
+      ];
     },
   );
 }
 
-async function usernameExists(username: string) {
+async function getProfileByUsername(username: string) {
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("profiles")
-    .select("id")
+    .select("id, username, display_name")
     .eq("username", username)
     .maybeSingle();
 
-  return Boolean(data);
+  if (error || !data) {
+    return null;
+  }
+
+  const row = data as ProfileRow;
+
+  if (!row.username) {
+    return null;
+  }
+
+  return {
+    displayName: getDisplayName(row.display_name, row.username),
+    userId: row.id,
+    username: row.username,
+  };
 }
 
-async function insertPasswordEvent(
+async function usernameExists(username: string) {
+  return Boolean(await getProfileByUsername(username));
+}
+
+async function insertPasswordEventWithAdmin(
+  admin: SupabaseAdminClient,
   action: "created" | "reset" | "forced_change" | "changed",
   studentId: string,
   createdBy: string,
   classId?: string,
 ) {
-  const supabase = await createSupabaseServerClient();
-  await supabase.from("student_password_events").insert({
+  const { error } = await admin.from("student_password_events").insert({
     action,
     class_id: classId ?? null,
     created_by: createdBy,
     student_id: studentId,
   });
+
+  if (error && error.code !== "42P01") {
+    console.error("insertPasswordEventWithAdmin failed", {
+      action,
+      errorMessage: error.message,
+      studentId,
+    });
+  }
+}
+
+async function insertOwnPasswordEvent(
+  action: "changed",
+  studentId: string,
+  createdBy: string,
+) {
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.from("student_password_events").insert({
+    action,
+    class_id: null,
+    created_by: createdBy,
+    student_id: studentId,
+  });
+
+  if (error && error.code !== "42P01") {
+    console.error("insertOwnPasswordEvent failed", {
+      action,
+      errorMessage: error.message,
+      studentId,
+    });
+  }
+}
+
+async function setPasswordRequirementWithAdmin(
+  admin: SupabaseAdminClient,
+  studentId: string,
+  mustChangePassword: boolean,
+) {
+  const { data, error } = await admin
+    .from("profiles")
+    .update({
+      must_change_password: mustChangePassword,
+      password_changed_at: mustChangePassword ? null : new Date().toISOString(),
+    })
+    .eq("id", studentId)
+    .select("id, must_change_password")
+    .maybeSingle();
+
+  if (error || !data || data.must_change_password !== mustChangePassword) {
+    console.error("setPasswordRequirementWithAdmin failed", {
+      errorMessage: error?.message,
+      expectedMustChangePassword: mustChangePassword,
+      returnedMustChangePassword: data?.must_change_password,
+      studentId,
+    });
+
+    return false;
+  }
+
+  return true;
+}
+
+async function setOwnPasswordChanged(userId: string) {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .update({
+      must_change_password: false,
+      password_changed_at: new Date().toISOString(),
+    })
+    .eq("id", userId)
+    .select("id, must_change_password")
+    .maybeSingle();
+
+  if (error || !data || data.must_change_password !== false) {
+    console.error("setOwnPasswordChanged failed", {
+      errorMessage: error?.message,
+      returnedMustChangePassword: data?.must_change_password,
+      userId,
+    });
+
+    return false;
+  }
+
+  return true;
+}
+
+export async function searchStudentProfileForClass(
+  classId: string,
+  usernameInput: string,
+): Promise<StudentMutationResult> {
+  const teacher = await getCurrentUser();
+  const username = normalizeStudentUsername(usernameInput);
+
+  if (!teacher || !(await canManageClass(classId, teacher.id))) {
+    return { error: "אין הרשאה לניהול הכיתה.", success: false };
+  }
+
+  if (!username) {
+    return { error: "יש להזין שם משתמש.", success: false };
+  }
+
+  const profile = await getProfileByUsername(username);
+
+  if (!profile) {
+    return { error: "לא נמצא משתמש בשם זה.", success: false };
+  }
+
+  return { profile, success: true };
+}
+
+export async function attachExistingStudentToClass(
+  classId: string,
+  usernameInput: string,
+): Promise<StudentMutationResult> {
+  const teacher = await getCurrentUser();
+  const username = normalizeStudentUsername(usernameInput);
+
+  if (!teacher || !(await canManageClass(classId, teacher.id))) {
+    return { error: "אין הרשאה לניהול הכיתה.", success: false };
+  }
+
+  const profile = await getProfileByUsername(username);
+
+  if (!profile) {
+    return { error: "לא נמצא משתמש בשם זה.", success: false };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data: existingMembership } = await supabase
+    .from("class_memberships")
+    .select("active")
+    .eq("class_id", classId)
+    .eq("user_id", profile.userId)
+    .eq("role", "student")
+    .maybeSingle();
+
+  if (existingMembership?.active) {
+    return { error: "המשתמש כבר משויך לכיתה.", success: false };
+  }
+
+  const { error } = await supabase.from("class_memberships").upsert(
+    {
+      active: true,
+      class_id: classId,
+      role: "student",
+      student_code: null,
+      user_id: profile.userId,
+    },
+    { onConflict: "class_id,user_id" },
+  );
+
+  if (error) {
+    return { error: "לא הצלחנו לצרף את המשתמש לכיתה.", success: false };
+  }
+
+  return {
+    message: existingMembership
+      ? "המשתמש הוחזר לכיתה."
+      : "המשתמש צורף לכיתה.",
+    profile,
+    success: true,
+  };
+}
+
+export async function removeStudentFromClass(classId: string, studentId: string) {
+  const teacher = await getCurrentUser();
+
+  if (!teacher || !(await canManageClass(classId, teacher.id))) {
+    return { error: "אין הרשאה לניהול הכיתה.", success: false };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("class_memberships")
+    .update({ active: false })
+    .eq("class_id", classId)
+    .eq("user_id", studentId)
+    .eq("role", "student");
+
+  if (error) {
+    return { error: "לא הצלחנו להסיר את התלמיד מהכיתה.", success: false };
+  }
+
+  return { message: "התלמיד הוסר מהכיתה.", success: true };
 }
 
 export async function createManagedStudent(
@@ -170,7 +390,7 @@ export async function createManagedStudent(
 ): Promise<StudentMutationResult> {
   const teacher = await getCurrentUser();
   const username = normalizeStudentUsername(input.username);
-  const displayName = input.displayName.trim();
+  const displayName = input.displayName?.trim() || null;
   const temporaryPassword =
     input.temporaryPassword?.trim() || generateTemporaryPassword();
 
@@ -178,7 +398,7 @@ export async function createManagedStudent(
     return { error: "אין הרשאה לניהול הכיתה.", success: false };
   }
 
-  if (!displayName || !username || !temporaryPassword) {
+  if (!username || !temporaryPassword) {
     return { error: "חסרים פרטים ליצירת תלמיד.", success: false };
   }
 
@@ -195,7 +415,10 @@ export async function createManagedStudent(
   }
 
   if (await usernameExists(username)) {
-    return { error: "שם המשתמש כבר קיים.", success: false };
+    return {
+      error: "שם המשתמש כבר קיים. אפשר לצרף משתמש קיים לכיתה.",
+      success: false,
+    };
   }
 
   const admin = createSupabaseAdminClient();
@@ -223,16 +446,20 @@ export async function createManagedStudent(
     };
   }
 
-  const supabase = await createSupabaseServerClient();
   const studentId = authData.user.id;
-  const { error: profileError } = await supabase.from("profiles").upsert({
-    created_by: teacher.id,
-    display_name: displayName,
-    id: studentId,
-    must_change_password: true,
-    password_changed_at: null,
-    username,
-  });
+  const { error: profileError } = await admin.from("profiles").upsert(
+    {
+      created_by: teacher.id,
+      display_name: displayName,
+      id: studentId,
+      must_change_password: true,
+      password_changed_at: null,
+      username,
+    },
+    {
+      onConflict: "id",
+    },
+  );
 
   if (profileError) {
     console.error("createManagedStudent profile upsert failed", {
@@ -247,14 +474,14 @@ export async function createManagedStudent(
     };
   }
 
-  const { error: membershipError } = await supabase
+  const { error: membershipError } = await admin
     .from("class_memberships")
     .upsert(
       {
         active: true,
         class_id: input.classId,
         role: "student",
-        student_code: input.studentCode?.trim() || null,
+        student_code: null,
         user_id: studentId,
       },
       {
@@ -275,11 +502,31 @@ export async function createManagedStudent(
     };
   }
 
-  await insertPasswordEvent("created", studentId, teacher.id, input.classId);
+  const flagUpdated = await setPasswordRequirementWithAdmin(
+    admin,
+    studentId,
+    true,
+  );
+
+  if (!flagUpdated) {
+    return {
+      error:
+        "משתמש ההתחברות נוצר ושויך לכיתה, אבל לא הצלחנו לדרוש החלפת סיסמה.",
+      success: false,
+    };
+  }
+
+  await insertPasswordEventWithAdmin(
+    admin,
+    "created",
+    studentId,
+    teacher.id,
+    input.classId,
+  );
 
   return {
     slip: {
-      displayName,
+      displayName: getDisplayName(displayName, username),
       temporaryPassword,
       username,
     },
@@ -319,16 +566,26 @@ export async function resetManagedStudentPassword(
     return { error: "לא הצלחנו לאפס את הסיסמה.", success: false };
   }
 
-  const supabase = await createSupabaseServerClient();
-  await supabase
-    .from("profiles")
-    .update({
-      must_change_password: true,
-      password_changed_at: null,
-    })
-    .eq("id", studentId);
+  const flagUpdated = await setPasswordRequirementWithAdmin(
+    admin,
+    studentId,
+    true,
+  );
 
-  await insertPasswordEvent("reset", studentId, teacher.id, classId);
+  if (!flagUpdated) {
+    return {
+      error: "הסיסמה אופסה, אבל לא הצלחנו לדרוש החלפת סיסמה.",
+      success: false,
+    };
+  }
+
+  await insertPasswordEventWithAdmin(
+    admin,
+    "reset",
+    studentId,
+    teacher.id,
+    classId,
+  );
 
   return {
     slip: {
@@ -356,34 +613,34 @@ export async function forceManagedStudentPasswordChange(
     return { error: "התלמיד לא נמצא בכיתה.", success: false };
   }
 
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase
-    .from("profiles")
-    .update({ must_change_password: true })
-    .eq("id", studentId);
+  const admin = createSupabaseAdminClient();
+  const flagUpdated = await setPasswordRequirementWithAdmin(
+    admin,
+    studentId,
+    true,
+  );
 
-  if (error) {
+  if (!flagUpdated) {
     return { error: "לא הצלחנו לדרוש החלפת סיסמה.", success: false };
   }
 
-  await insertPasswordEvent("forced_change", studentId, teacher.id, classId);
+  await insertPasswordEventWithAdmin(
+    admin,
+    "forced_change",
+    studentId,
+    teacher.id,
+    classId,
+  );
 
   return { success: true };
 }
 
 export async function recordOwnPasswordChanged(userId: string) {
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      must_change_password: false,
-      password_changed_at: new Date().toISOString(),
-    })
-    .eq("id", userId);
+  const profileUpdated = await setOwnPasswordChanged(userId);
 
-  if (!error) {
-    await insertPasswordEvent("changed", userId, userId);
+  if (profileUpdated) {
+    await insertOwnPasswordEvent("changed", userId, userId);
   }
 
-  return !error;
+  return profileUpdated;
 }
