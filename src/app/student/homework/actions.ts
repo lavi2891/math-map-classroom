@@ -79,6 +79,7 @@ export async function submitHomework(
 
   revalidatePath(ROUTES.studentHome);
   revalidatePath(ROUTES.studentClass);
+  revalidatePath(ROUTES.studentHomework);
   revalidatePath(ROUTES.teacherHomework);
 
   return {
@@ -112,6 +113,7 @@ export async function deleteHomeworkFileAction(
   }
 
   revalidatePath(ROUTES.studentClass);
+  revalidatePath(ROUTES.studentHomework);
   revalidatePath(ROUTES.studentHome);
   revalidatePath(ROUTES.teacherHomework);
 

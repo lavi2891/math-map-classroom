@@ -1,4 +1,4 @@
-import { markAnnouncementReadAction } from "@/app/student/class/actions";
+import { markAnnouncementReadAction } from "@/app/student/announcements/actions";
 import { AnnouncementLinks } from "@/components/announcements/AnnouncementLinks";
 import { AnnouncementPlainBody } from "@/components/announcements/AnnouncementPlainBody";
 import { announcementCategoryLabels } from "@/components/announcements/announcementLabels";
@@ -19,6 +19,11 @@ export function StudentAnnouncementCard({
       }`}
     >
       <div className="grid gap-3">
+        {announcement.isPinned ? (
+          <div>
+            <StatusBadge tone="warning">נעוץ</StatusBadge>
+          </div>
+        ) : null}
         <AnnouncementPlainBody body={announcement.body} />
         <AnnouncementLinks links={announcement.links} />
         {announcement.requireReadConfirmation ? (

@@ -130,6 +130,7 @@ export async function createHomeworkAction(
 
   revalidatePath(ROUTES.teacherHomework);
   revalidatePath(ROUTES.studentClass);
+  revalidatePath(ROUTES.studentHomework);
   revalidatePath(ROUTES.studentHome);
 
   return { success: true };
@@ -160,6 +161,7 @@ export async function updateHomeworkAction(
 
   revalidatePath(ROUTES.teacherHomework);
   revalidatePath(ROUTES.studentClass);
+  revalidatePath(ROUTES.studentHomework);
   revalidatePath(ROUTES.studentHome);
 
   return { success: true };
@@ -177,6 +179,7 @@ export async function hideHomeworkAction(formData: FormData) {
   if (success) {
     revalidatePath(ROUTES.teacherHomework);
     revalidatePath(ROUTES.studentClass);
+    revalidatePath(ROUTES.studentHomework);
     revalidatePath(ROUTES.studentHome);
   }
 }
@@ -193,6 +196,7 @@ export async function unhideHomeworkAction(formData: FormData) {
   if (success) {
     revalidatePath(ROUTES.teacherHomework);
     revalidatePath(ROUTES.studentClass);
+    revalidatePath(ROUTES.studentHomework);
     revalidatePath(ROUTES.studentHome);
   }
 }
@@ -214,6 +218,7 @@ export async function deleteHomeworkAction(
   if (result.success) {
     revalidatePath(ROUTES.teacherHomework);
     revalidatePath(ROUTES.studentClass);
+    revalidatePath(ROUTES.studentHomework);
     revalidatePath(ROUTES.studentHome);
 
     return { success: true };

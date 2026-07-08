@@ -9,6 +9,7 @@ type StudentHomeworkListProps = {
   assignments: HomeworkAssignment[];
   enableLoadMore?: boolean;
   initialCount?: number;
+  loadMoreLabel?: string;
 };
 
 const DEFAULT_HOMEWORK_PAGE_SIZE = 10;
@@ -17,6 +18,7 @@ export function StudentHomeworkList({
   assignments,
   enableLoadMore = true,
   initialCount = DEFAULT_HOMEWORK_PAGE_SIZE,
+  loadMoreLabel = "טען עוד",
 }: StudentHomeworkListProps) {
   const [visibleCount, setVisibleCount] = useState(initialCount);
   const visibleAssignments = useMemo(
@@ -44,7 +46,7 @@ export function StudentHomeworkList({
               }
               type="button"
             >
-              טען עוד
+              {loadMoreLabel}
             </button>
           ) : null}
         </>

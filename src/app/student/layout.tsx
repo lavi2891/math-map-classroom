@@ -15,7 +15,11 @@ export default async function StudentLayout({
 
   if (!selectedClass) {
     return (
-      <AppShell navigationRole={appMode} user={profile}>
+      <AppShell
+        navigationRole={appMode}
+        profileHref="/student/profile"
+        user={profile}
+      >
         <EmptyState
           title="לא נמצא שיוך לכיתה. פנה למורה."
           description="לא נמצאה כיתה פעילה לחשבון הזה."
@@ -32,7 +36,10 @@ export default async function StudentLayout({
           selectedClassId={selectedClass.id}
         />
       }
+      headerSubtitle={profile.name}
+      headerTitle={selectedClass.name}
       navigationRole={appMode}
+      profileHref="/student/profile"
       user={profile}
     >
       {children}

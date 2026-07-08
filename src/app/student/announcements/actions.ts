@@ -19,4 +19,5 @@ export async function markAnnouncementReadAction(formData: FormData) {
 
   revalidatePath(ROUTES.studentClass);
   revalidatePath(ROUTES.studentHome);
+  revalidatePath(ROUTES.studentAnnouncements);
 }

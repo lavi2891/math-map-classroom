@@ -105,6 +105,7 @@ export async function createAnnouncementAction(
 
   revalidatePath(ROUTES.teacherAnnouncements);
   revalidatePath(ROUTES.studentClass);
+  revalidatePath(ROUTES.studentAnnouncements);
   revalidatePath(ROUTES.studentHome);
 
   return { success: true };
@@ -135,6 +136,7 @@ export async function updateAnnouncementAction(
 
   revalidatePath(ROUTES.teacherAnnouncements);
   revalidatePath(ROUTES.studentClass);
+  revalidatePath(ROUTES.studentAnnouncements);
   revalidatePath(ROUTES.studentHome);
 
   return { success: true };
@@ -149,6 +151,7 @@ export async function hideAnnouncementAction(formData: FormData) {
 
   revalidatePath(ROUTES.teacherAnnouncements);
   revalidatePath(ROUTES.studentClass);
+  revalidatePath(ROUTES.studentAnnouncements);
   revalidatePath(ROUTES.studentHome);
 }
 
@@ -161,6 +164,7 @@ export async function unhideAnnouncementAction(formData: FormData) {
 
   revalidatePath(ROUTES.teacherAnnouncements);
   revalidatePath(ROUTES.studentClass);
+  revalidatePath(ROUTES.studentAnnouncements);
   revalidatePath(ROUTES.studentHome);
 }
 
@@ -173,5 +177,6 @@ export async function deleteAnnouncementAction(formData: FormData) {
 
   revalidatePath(ROUTES.teacherAnnouncements);
   revalidatePath(ROUTES.studentClass);
+  revalidatePath(ROUTES.studentAnnouncements);
   revalidatePath(ROUTES.studentHome);
 }
