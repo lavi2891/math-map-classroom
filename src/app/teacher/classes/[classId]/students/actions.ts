@@ -125,12 +125,12 @@ export async function forcePasswordChangeAction(
   const result = await forceManagedStudentPasswordChange(classId, studentId);
 
   if (!result.success) {
-    return { error: result.error ?? "לא הצלחנו לדרוש החלפת סיסמה." };
+    return { error: result.error ?? "לא הצלחנו לעדכן את חובת החלפת הסיסמה." };
   }
 
   revalidateStudents(classId);
 
-  return { message: "התלמיד יתבקש להחליף סיסמה." };
+  return { message: "התלמיד יתבקש להחליף סיסמה בכניסה הבאה." };
 }
 
 export async function removeStudentFromClassAction(

@@ -32,5 +32,10 @@ export function createSupabaseAdminClient() {
       autoRefreshToken: false,
       persistSession: false,
     },
+    global: {
+      headers: {
+        Authorization: `Bearer ${supabaseSecretKey}`,
+      },
+    },
   });
 }
