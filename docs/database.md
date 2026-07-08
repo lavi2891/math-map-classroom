@@ -214,7 +214,7 @@ Current app usage:
 - If `allow_late_submission = false`, students cannot submit or update after `due_at`.
 - `require_status`, `require_understanding`, and `require_photo` control which expectations are shown in the UI.
 - If `external_url` is filled, the app stores `allow_external_url = true`.
-- Default app list limits: student visible announcements 10, student open homework 10, student homework history 30, teacher announcements 20, and teacher homework 20.
+- Default app list limits: student visible announcements 10, student open homework 10, student homework history 100 fetched / 10 initially shown, teacher announcements 20, and teacher homework 20.
 
 ### `homework_submissions`
 

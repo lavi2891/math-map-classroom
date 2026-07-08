@@ -3,39 +3,20 @@ import { StudentClassFeed } from "@/components/student/StudentClassFeed";
 import { StudentHomeworkHistory } from "@/components/student/StudentHomeworkHistory";
 import { getStudentAnnouncements } from "@/lib/db/announcements";
 import { getStudentClasses } from "@/lib/db/classes";
-import { getStudentHomeworkHistory } from "@/lib/db/homework";
-import type { StudentHomeworkHistoryFilter } from "@/types";
+import {
+  getOpenStudentHomework,
+  getStudentHomeworkHistory,
+} from "@/lib/db/homework";
 
-type StudentClassPageProps = {
-  searchParams?: Promise<{
-    homeworkFilter?: string;
-  }>;
-};
+const HOMEWORK_HISTORY_LIMIT = 100;
 
-function getHomeworkFilter(value?: string): StudentHomeworkHistoryFilter {
-  if (
-    value === "all" ||
-    value === "open" ||
-    value === "overdue" ||
-    value === "submitted"
-  ) {
-    return value;
-  }
-
-  return "open";
-}
-
-export default async function StudentClassPage({
-  searchParams,
-}: StudentClassPageProps) {
-  const params = await searchParams;
-  const homeworkFilter = getHomeworkFilter(params?.homeworkFilter);
+export default async function StudentClassPage() {
   const classes = await getStudentClasses();
   const classIds = classes.map((classSummary) => classSummary.id);
   const [announcements, homework, homeworkHistory] = await Promise.all([
     getStudentAnnouncements(classIds, 10),
-    getStudentHomeworkHistory("open", 10, classIds),
-    getStudentHomeworkHistory(homeworkFilter, 30, classIds),
+    getOpenStudentHomework(10, classIds),
+    getStudentHomeworkHistory(HOMEWORK_HISTORY_LIMIT, classIds),
   ]);
 
   return (
@@ -46,10 +27,7 @@ export default async function StudentClassPage({
         description="הודעות ושיעורי בית מהכיתות הפעילות שלך."
       />
       <StudentClassFeed announcements={announcements} homework={homework} />
-      <StudentHomeworkHistory
-        activeFilter={homeworkFilter}
-        assignments={homeworkHistory}
-      />
+      <StudentHomeworkHistory assignments={homeworkHistory} />
     </div>
   );
 }

@@ -738,6 +738,51 @@ function isOpenStudentHomework(assignment: HomeworkAssignment) {
   );
 }
 
+function needsStudentAction(assignment: HomeworkAssignment) {
+  return assignment.canSubmit && isOpenStudentHomework(assignment);
+}
+
+function getStudentHomeworkRelevanceRank(assignment: HomeworkAssignment) {
+  if (!assignment.isOverdue && needsStudentAction(assignment)) {
+    return 0;
+  }
+
+  if (assignment.isOverdue && needsStudentAction(assignment)) {
+    return 1;
+  }
+
+  if (assignment.submission?.submittedAt) {
+    return 2;
+  }
+
+  return 3;
+}
+
+function getStudentHomeworkSortDate(assignment: HomeworkAssignment) {
+  if (assignment.submission?.submittedAt) {
+    return Date.parse(assignment.submission.submittedAt);
+  }
+
+  if (assignment.dueAt) {
+    return Date.parse(assignment.dueAt);
+  }
+
+  return Date.parse(assignment.visibleFrom);
+}
+
+function sortStudentHomeworkByRelevance(assignments: HomeworkAssignment[]) {
+  return [...assignments].sort((a, b) => {
+    const rankDiff =
+      getStudentHomeworkRelevanceRank(a) - getStudentHomeworkRelevanceRank(b);
+
+    if (rankDiff !== 0) {
+      return rankDiff;
+    }
+
+    return getStudentHomeworkSortDate(b) - getStudentHomeworkSortDate(a);
+  });
+}
+
 function filterStudentHomework(
   assignments: HomeworkAssignment[],
   filter: StudentHomeworkHistoryFilter,
@@ -811,10 +856,10 @@ export async function getManageableHomeworkAssignments() {
   return getTeacherHomeworkAssignments();
 }
 
-export async function getOpenStudentHomework(limit = 10) {
-  const classes = await getStudentClasses();
+export async function getOpenStudentHomework(limit = 10, classIds?: string[]) {
+  const classes = classIds ? [] : await getStudentClasses();
   const homework = await getStudentHomeworkAssignments(
-    classes.map((classSummary) => classSummary.id),
+    classIds ?? classes.map((classSummary) => classSummary.id),
     Math.max(limit * 3, limit),
   );
 
@@ -822,16 +867,15 @@ export async function getOpenStudentHomework(limit = 10) {
 }
 
 export async function getStudentHomeworkHistory(
-  filter: StudentHomeworkHistoryFilter = "open",
-  limit = 30,
+  limit = 100,
   classIds?: string[],
 ) {
   const homework = await getStudentHomeworkAssignments(
     classIds,
-    filter === "open" ? Math.max(limit * 3, limit) : limit,
+    limit,
   );
 
-  return filterStudentHomework(homework, filter).slice(0, limit);
+  return sortStudentHomeworkByRelevance(homework).slice(0, limit);
 }
 
 export async function createHomeworkAssignment(input: HomeworkAssignmentInput) {

@@ -1,79 +1,55 @@
-import Link from "next/link";
+"use client";
+
+import { useMemo, useState } from "react";
 import { EmptyState } from "@/components/app/EmptyState";
 import { StudentHomeworkCard } from "@/components/student/StudentHomeworkCard";
-import type {
-  HomeworkAssignment,
-  StudentHomeworkHistoryFilter,
-} from "@/types";
+import type { HomeworkAssignment } from "@/types";
 
 type StudentHomeworkHistoryProps = {
   assignments: HomeworkAssignment[];
-  activeFilter: StudentHomeworkHistoryFilter;
 };
 
-const filterLabels: Record<StudentHomeworkHistoryFilter, string> = {
-  all: "הכל",
-  open: "פתוחים",
-  overdue: "עברו מועד",
-  submitted: "הוגשו",
-};
+const HOMEWORK_PAGE_SIZE = 10;
 
-const filters: StudentHomeworkHistoryFilter[] = [
-  "open",
-  "overdue",
-  "submitted",
-  "all",
-];
+export function StudentHomeworkHistory({ assignments }: StudentHomeworkHistoryProps) {
+  const [visibleCount, setVisibleCount] = useState(HOMEWORK_PAGE_SIZE);
+  const visibleAssignments = useMemo(
+    () => assignments.slice(0, visibleCount),
+    [assignments, visibleCount],
+  );
+  const hasMore = visibleCount < assignments.length;
 
-export function StudentHomeworkHistory({
-  activeFilter,
-  assignments,
-}: StudentHomeworkHistoryProps) {
   return (
     <section className="grid gap-3" id="homework-history">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-lg font-bold text-stone-950">
-          היסטוריית שיעורי בית
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {filters.map((filter) => (
-            <Link
-              className={`min-h-10 rounded-md border px-3 py-2 text-sm font-bold transition ${
-                activeFilter === filter
-                  ? "border-teal-700 bg-teal-700 text-white"
-                  : "border-stone-200 bg-white text-stone-700 hover:bg-stone-50"
-              }`}
-              href={`/student/class?homeworkFilter=${filter}#homework-history`}
-              key={filter}
-            >
-              {filterLabels[filter]}
-            </Link>
-          ))}
-        </div>
-      </div>
+      <h2 className="text-lg font-bold text-stone-950">שיעורי בית</h2>
 
       {assignments.length > 0 ? (
         <>
           <div className="grid gap-3">
-            {assignments.map((assignment) => (
+            {visibleAssignments.map((assignment) => (
               <StudentHomeworkCard assignment={assignment} key={assignment.id} />
             ))}
           </div>
-          {/* TODO: implement cursor pagination for homework history. */}
-          {assignments.length >= 30 ? (
+          {hasMore ? (
             <button
-              className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-stone-500 sm:w-fit"
-              disabled
+              className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-teal-700 transition hover:bg-stone-50 sm:w-fit"
+              onClick={() =>
+                setVisibleCount((current) => current + HOMEWORK_PAGE_SIZE)
+              }
               type="button"
             >
               טען עוד
             </button>
+          ) : visibleCount > HOMEWORK_PAGE_SIZE ? (
+            <p className="text-sm font-bold text-stone-500">
+              אין עוד שיעורי בית להצגה
+            </p>
           ) : null}
         </>
       ) : (
         <EmptyState
           title="אין שיעורי בית להצגה"
-          description="אפשר לבחור מסנן אחר כדי לראות משימות נוספות."
+          description="שיעורי בית גלויים יופיעו כאן."
         />
       )}
     </section>

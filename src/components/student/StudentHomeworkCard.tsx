@@ -37,10 +37,6 @@ export function StudentHomeworkCard({
       return <StatusBadge tone="success">צורף צילום</StatusBadge>;
     }
 
-    if (assignment.requirePhoto && submission?.status === "started") {
-      return <StatusBadge tone="warning">נדרש צילום לסיום</StatusBadge>;
-    }
-
     if (assignment.requirePhoto) {
       return <StatusBadge tone="warning">נדרש צילום</StatusBadge>;
     }
@@ -60,17 +56,27 @@ export function StudentHomeworkCard({
         <div className="grid gap-2 text-sm text-stone-600">
           <p>תאריך יעד: {assignment.dueDate ?? "אין תאריך יעד"}</p>
           {assignment.isOverdue ? (
-            <p
-              className={
-                assignment.canSubmit
-                  ? "font-bold text-amber-700"
-                  : "font-bold text-red-700"
-              }
-            >
-              {assignment.canSubmit
-                ? "עבר תאריך ההגשה · אפשר להגיש באיחור"
-                : "עבר תאריך ההגשה · לא ניתן להגיש"}
-            </p>
+            <div className="grid gap-2">
+              <p
+                className={
+                  assignment.canSubmit
+                    ? "font-bold text-amber-700"
+                    : "font-bold text-red-700"
+                }
+              >
+                {assignment.canSubmit
+                  ? "עבר תאריך ההגשה · אפשר להגיש באיחור"
+                  : "עבר תאריך ההגשה · לא ניתן להגיש"}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <StatusBadge tone="warning">עבר מועד</StatusBadge>
+                <StatusBadge tone={assignment.canSubmit ? "warning" : "danger"}>
+                  {assignment.canSubmit
+                    ? "אפשר להגיש באיחור"
+                    : "לא ניתן להגיש"}
+                </StatusBadge>
+              </div>
+            </div>
           ) : null}
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-bold text-stone-700">סטטוס ההגשה שלי:</span>
