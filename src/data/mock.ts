@@ -118,6 +118,7 @@ export const studentProfileCards: AppCard[] = [
 
 export const classSummaries: ClassSummary[] = [
   {
+    active: true,
     classCode: "Z7A",
     grade: 7,
     id: "class-1",
@@ -126,6 +127,7 @@ export const classSummaries: ClassSummary[] = [
     focus: "יחסים ופרופורציה",
   },
   {
+    active: true,
     classCode: "Z7D",
     grade: 7,
     id: "class-2",
@@ -134,6 +136,7 @@ export const classSummaries: ClassSummary[] = [
     focus: "משוואות בסיסיות",
   },
   {
+    active: true,
     classCode: "H8A",
     grade: 8,
     id: "class-3",

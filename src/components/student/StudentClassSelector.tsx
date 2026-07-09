@@ -42,7 +42,7 @@ export function StudentClassSelector({
       >
         {classes.map((classSummary) => (
           <option key={classSummary.id} value={classSummary.id}>
-            {`${classSummary.name} (${classSummary.classCode})`}
+            {`${classSummary.displayName ?? classSummary.name} (${classSummary.classCode})`}
           </option>
         ))}
       </select>

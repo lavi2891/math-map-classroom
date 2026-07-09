@@ -8,6 +8,7 @@ Source of truth:
 - `supabase/migrations/0005_student_password_onboarding.sql`
 - `supabase/migrations/0006_student_management.sql`
 - `supabase/migrations/0007_refine_student_management.sql`
+- `supabase/migrations/0008_class_management.sql`
 
 This document describes the current effective Supabase schema after the contextual class role migration in that file. Earlier definitions in the same migration create the first version of the schema, then the later section replaces the global/legacy class role model.
 
@@ -68,12 +69,17 @@ Columns:
 
 - `id uuid primary key`
 - `name text`
+- `display_name text` - optional student-facing display name. If missing, the app falls back to `name`.
 - `grade int`
 - `class_code text unique`
+- `school_year text` - optional school year label.
+- `active boolean default true` - inactive classes are archived.
+- `archived_at timestamptz` - set when a class is moved to the archive.
 - `created_at timestamptz`
 - `updated_at timestamptz`
 
 Important: there is no effective `teacher_id` column. Class ownership and staff access are represented in `class_memberships`.
+Only class owners can update or archive/unarchive class records. Archiving sets `active = false` and `archived_at = now()`; unarchiving sets `active = true` and clears `archived_at`. Archived classes are not hard deleted. Students see only active classes. Staff can still see archived classes for classes where they have staff membership.
 
 ### `class_memberships`
 

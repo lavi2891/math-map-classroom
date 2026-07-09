@@ -71,10 +71,14 @@ type MembershipStudentRow = {
 };
 
 type ClassRow = {
+  active: boolean | null;
+  archived_at: string | null;
   class_code: string;
+  display_name: string | null;
   grade: number;
   id: string;
   name: string;
+  school_year: string | null;
 };
 
 type MembershipClassRow = {
@@ -159,11 +163,15 @@ function toClassSummary(row: MembershipClassRow, studentCount = 0): ClassSummary
 
   return [
     {
+      active: classRow.active ?? true,
+      archivedAt: classRow.archived_at ?? undefined,
       classCode: classRow.class_code,
+      displayName: classRow.display_name ?? undefined,
       grade: classRow.grade,
       id: classRow.id,
       name: classRow.name,
       role: row.role,
+      schoolYear: classRow.school_year ?? undefined,
       studentCount,
     },
   ];
@@ -372,7 +380,9 @@ export async function getManageableAnnouncementClasses() {
   const classIds = memberships.map((membership) => membership.classId);
   const { data, error } = await supabase
     .from("class_memberships")
-    .select("class_id, role, classes(id, name, grade, class_code)")
+    .select(
+      "class_id, role, classes(id, name, display_name, grade, class_code, school_year, active, archived_at)",
+    )
     .in("class_id", classIds)
     .eq("active", true);
 

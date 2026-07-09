@@ -21,7 +21,7 @@ export function getSupabaseEnv(): SupabaseEnv {
     throw new Error(
       `Missing required Supabase environment variable(s): ${missingVars.join(
         ", ",
-      )}. Add them to .env.local. Use NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY only; do not use a service role key or direct database connection string.`,
+      )}. Add them to .env.local. This public/session client must use NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, not a service role key or direct database connection string.`,
     );
   }
 

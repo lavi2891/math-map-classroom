@@ -37,7 +37,7 @@ export default async function StudentLayout({
         />
       }
       headerSubtitle={profile.name}
-      headerTitle={selectedClass.name}
+      headerTitle={selectedClass.displayName ?? selectedClass.name}
       navigationRole={appMode}
       profileHref="/student/profile"
       user={profile}

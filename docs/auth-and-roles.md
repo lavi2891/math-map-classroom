@@ -8,6 +8,7 @@ Source of truth:
 - `supabase/migrations/0005_student_password_onboarding.sql`
 - `supabase/migrations/0006_student_management.sql`
 - `supabase/migrations/0007_refine_student_management.sql`
+- `supabase/migrations/0008_class_management.sql`
 
 This project uses Supabase Auth for identity and `public.profiles` for profile metadata. Authorization is contextual and class-based through `public.class_memberships`.
 
@@ -28,6 +29,8 @@ Student class access is loaded after login from active `class_memberships` rows 
 - If more than one active student membership exists, the student layout shows a `כיתה` dropdown in the header.
 
 The selected class is stored in a cookie. If the cookie is missing or does not match one of the student's active memberships, the app uses the first active student class. The selected class context filters student announcements and homework, and should be used by class-aware student knowledge and practice features as they become backed by class data.
+
+Students see only active classes. If a class is archived with `classes.active = false`, it is removed from the student class context until an owner unarchives it.
 
 Student accounts created by teachers use a temporary password and `profiles.must_change_password = true`. Users with this flag are redirected to `/change-password` from protected student and teacher pages until they choose a new password.
 
@@ -70,7 +73,8 @@ The class owner. This role can:
 
 - View the class and class content.
 - Manage class content.
-- Update/delete class records.
+- Update class records.
+- Archive and unarchive class records.
 - Manage class memberships.
 
 ### `teacher`
@@ -286,6 +290,18 @@ Helper:
 
 - `public.is_class_owner(target_class_id uuid)`
 
+### Who can manage class records?
+
+Only an active `owner` membership can update, archive, or unarchive a class.
+
+Class archive behavior:
+
+- Archive sets `classes.active = false` and `classes.archived_at = now()`.
+- Unarchive sets `classes.active = true` and `classes.archived_at = null`.
+- Archived classes are not hard deleted.
+- Students can select and use only active classes.
+- Staff can still see archived classes where they have staff membership.
+
 ### Can this user view another user's profile or student data?
 
 The user can view their own profile. Staff can view users who share a class with them.
@@ -319,8 +335,8 @@ Homework helpers:
 The current RLS model follows these rules:
 
 - `profiles`: users can view themselves; staff can view users in shared classes.
-- `classes`: class members can view classes.
-- `classes`: first class owner can be inserted through membership bootstrap flow; class updates/deletes are owner-only.
+- `classes`: staff can view active and archived classes they belong to. Students can view only active classes.
+- `classes`: first class owner can be inserted through membership bootstrap flow; class updates/archive changes are owner-only.
 - `class_memberships`: users can view their own membership; class staff can view related memberships.
 - `class_memberships`: first owner can be created; later membership management is owner-only.
 - `announcements`: staff can view class announcements; students can view visible class announcements; `owner` and `teacher` can manage.
