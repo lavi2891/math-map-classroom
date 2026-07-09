@@ -5,12 +5,14 @@ Source of truth:
 - `supabase/migrations/0001_current_schema_reference.sql`
 - `supabase/migrations/0002_announcements_workflow.sql`
 - `supabase/migrations/0003_homework_lifecycle.sql`
+- `supabase/migrations/0004_homework_file_delete_policy.sql`
+- `supabase/migrations/0004_homework_late_submission.sql`
 - `supabase/migrations/0005_student_password_onboarding.sql`
 - `supabase/migrations/0006_student_management.sql`
 - `supabase/migrations/0007_refine_student_management.sql`
 - `supabase/migrations/0008_class_management.sql`
 
-This document describes the current effective Supabase schema after the contextual class role migration in that file. Earlier definitions in the same migration create the first version of the schema, then the later section replaces the global/legacy class role model.
+This document describes the current effective Supabase schema after all migrations listed above. Earlier definitions in `0001_current_schema_reference.sql` create the first version of the schema, then later sections and migrations replace the global/legacy class role model.
 
 ## Key Decision
 
@@ -79,7 +81,7 @@ Columns:
 - `updated_at timestamptz`
 
 Important: there is no effective `teacher_id` column. Class ownership and staff access are represented in `class_memberships`.
-Only class owners can update or archive/unarchive class records. Archiving sets `active = false` and `archived_at = now()`; unarchiving sets `active = true` and clears `archived_at`. Archived classes are not hard deleted. Students see only active classes. Staff can still see archived classes for classes where they have staff membership.
+Only class owners can update or archive/unarchive class records. Editable class-management fields include `name`, `display_name`, `grade`, `class_code`, and `school_year`. Archiving sets `active = false` and `archived_at = now()`; unarchiving sets `active = true` and clears `archived_at`. Archived classes are not hard deleted. Students see only active classes. Staff can still see archived classes for classes where they have staff membership.
 
 ### `class_memberships`
 
@@ -152,6 +154,16 @@ Columns:
 - `updated_at timestamptz`
 
 Access is class-membership based.
+
+Announcement lifecycle fields:
+
+- `category` classifies the announcement as `general`, `exam`, `reminder`, or `material`.
+- `is_hidden` hides an announcement from students without deleting it.
+- `deleted_at` marks a soft delete.
+- `updated_by` records the last editor.
+- `require_read_confirmation` enables student read tracking in `announcement_reads`.
+- `announcement_links` stores attached URL links for the announcement.
+- `announcement_reads` stores per-student read confirmations.
 
 Visibility rules for students:
 
@@ -236,6 +248,14 @@ Columns:
 
 Manage access is limited to class roles that can manage content.
 
+Homework lifecycle fields:
+
+- `is_hidden` hides a homework assignment from students without deleting it.
+- `deleted_at` marks a soft delete.
+- `updated_by` records the last editor.
+- `allow_late_submission` controls whether students can submit or update after `due_at`.
+- `late_submission_until` is the optional final cutoff for late submissions.
+
 Current app usage:
 
 - Teachers with active `owner` or `teacher` membership in `class_memberships` can create and edit assignments for that class.
@@ -278,44 +298,6 @@ Current app usage:
 - Teachers view submission summaries and per-student details for classes where they have active staff membership.
 - Summary denominators use active `student` memberships in `class_memberships`.
 
-### `tags`
-
-Reusable labels for homework organization and future autocomplete/search.
-
-Columns:
-
-- `id uuid primary key`
-- `label text` - display label, preserving the teacher-facing text.
-- `normalized_label text` - normalized value for uniqueness and search.
-- `class_id uuid null references classes(id)` - `null` means global/reusable; non-null means class-specific.
-- `knowledge_skill_id uuid null references knowledge_skills(id)` - optional link to a math skill.
-- `created_by uuid references profiles(id)`
-- `created_at timestamptz`
-- `updated_at timestamptz`
-
-Current app usage:
-
-- Tag normalization trims whitespace, removes leading `#`, collapses spaces, lowercases, and replaces spaces with `_` for `normalized_label`.
-- Teachers can create class-specific custom tags while creating or editing homework in classes they manage.
-- Skill suggestions can create tags linked to `knowledge_skills`.
-- There is no tag library, merge, or global delete UI yet.
-
-### `homework_tags`
-
-Join table connecting homework assignments to tags.
-
-Columns:
-
-- `homework_id uuid references homework_assignments(id)`
-- `tag_id uuid references tags(id)`
-- `created_at timestamptz`
-
-Current app usage:
-
-- Homework create/update replaces the assignment's tag links.
-- Teacher and student homework cards show attached tags.
-- Students can view tags on visible homework but cannot create or edit tags.
-
 ### `homework_files`
 
 Metadata for uploaded homework photos. Files live in Supabase Storage.
@@ -342,8 +324,11 @@ Current app usage:
 - The browser uploads images to Supabase Storage with the authenticated user session.
 - The app inserts one `homework_files` metadata row per uploaded image.
 - Students can remove file metadata only for files connected to their own submissions.
+- `0004_homework_file_delete_policy.sql` adds the RLS delete policy for student-owned homework file metadata removal.
+- Removal should delete or detach the metadata row and should also remove the private storage object when the app path performs storage cleanup. If storage cleanup fails, orphan cleanup is a follow-up maintenance concern.
 - Teachers view uploaded files from homework submission details.
 - Private files are opened through short-lived signed URLs; the bucket is not public.
+- Missing files should not be represented as filename-only links. The UI should show an unavailable/missing state instead of a broken filename-only display.
 
 ### `knowledge_domains`
 
@@ -491,16 +476,17 @@ Columns:
 
 ## Current RLS Direction
 
-RLS is enabled for the app tables. Policies are based on contextual class membership:
+RLS is enabled for the app tables. RLS is the real security layer; frontend route protection is for user experience only. Policies are based on contextual class membership:
 
-- Class members can select their classes and class content.
+- Staff can select their classes, including archived classes.
+- Students can select only active classes where they have active student membership.
 - Students can select only visible announcements for their classes.
 - Class staff can select announcements for their classes.
 - Students can select only visible, non-hidden, non-deleted homework for their classes.
 - Class staff can select non-deleted homework for their classes, including hidden homework.
 - `owner`, `teacher`, and `viewer` are class staff.
 - `owner` and `teacher` can manage class content.
-- Only `owner` can update/delete class records and manage memberships after first owner creation.
+- Only `owner` can update/archive class records and manage memberships after first owner creation.
 - Students can create/update their own homework submissions.
 - Students can create/update their own announcement read confirmations.
 - Staff can view student submissions for classes they are connected to.

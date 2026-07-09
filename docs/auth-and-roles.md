@@ -5,12 +5,16 @@ Source of truth:
 - `supabase/migrations/0001_current_schema_reference.sql`
 - `supabase/migrations/0002_announcements_workflow.sql`
 - `supabase/migrations/0003_homework_lifecycle.sql`
+- `supabase/migrations/0004_homework_file_delete_policy.sql`
+- `supabase/migrations/0004_homework_late_submission.sql`
 - `supabase/migrations/0005_student_password_onboarding.sql`
 - `supabase/migrations/0006_student_management.sql`
 - `supabase/migrations/0007_refine_student_management.sql`
 - `supabase/migrations/0008_class_management.sql`
 
 This project uses Supabase Auth for identity and `public.profiles` for profile metadata. Authorization is contextual and class-based through `public.class_memberships`.
+
+RLS is the real security layer. Frontend route protection and middleware redirects are for user experience only.
 
 ## Login And Student Class Context
 
@@ -73,7 +77,7 @@ The class owner. This role can:
 
 - View the class and class content.
 - Manage class content.
-- Update class records.
+- Update class records, including `display_name`, `school_year`, `active`, and archive state.
 - Archive and unarchive class records.
 - Manage class memberships.
 
@@ -161,7 +165,7 @@ Announcement managers are active `owner` and `teacher` memberships in the announ
 Managers can:
 
 - Create announcements for classes they manage.
-- Edit title, body, category, links, pinned state, visibility dates, and read-confirmation requirement.
+- Edit title, body, `category`, links, pinned state, visibility dates, `updated_by`, and read-confirmation requirement.
 - Hide and unhide announcements through `is_hidden`.
 - Soft delete announcements by setting `deleted_at`.
 
@@ -196,6 +200,8 @@ Staff can view read counts for their classes. The denominator is active student 
 
 Staff read details are split into students who marked read and students who have not marked read.
 
+Announcement links are stored in `announcement_links`. Read confirmations are stored in `announcement_reads`.
+
 ### Who can manage homework?
 
 Homework managers are active `owner` and `teacher` memberships in the assignment class.
@@ -203,14 +209,13 @@ Homework managers are active `owner` and `teacher` memberships in the assignment
 Managers can:
 
 - Create homework assignments.
-- Edit title, description, visibility date, due date, reporting requirements, photo requirement flag, and external URL.
+- Edit title, description, visibility date, due date, reporting requirements, photo requirement flag, external URL, and `updated_by`.
 - Hide and unhide homework through `is_hidden`.
 - Soft delete homework by setting `deleted_at`.
 - Configure deadline behavior with `due_at`, `allow_late_submission`, and `late_submission_until`.
 - Set `allow_late_submission` to control whether students may submit after the due date.
 - Set `late_submission_until` as an optional final cutoff for late submissions.
 - View submission summaries and per-student submission details.
-- Create class-specific homework tags and attach/remove tags on homework in their classes.
 
 Managers must be authorized through `class_memberships`. Do not use `profiles.role`, `classes.teacher_id`, `class_students`, a service role key, or any RLS bypass for homework management.
 
@@ -243,7 +248,6 @@ Students and teachers can change their own password from their profile page. Whe
 ### Who can submit homework?
 
 Students can view and submit only visible homework in classes where they have active `student` membership.
-Students can view tags attached to visible homework. Students cannot create, edit, attach, or remove homework tags.
 
 Visible homework means:
 
@@ -277,10 +281,10 @@ Students can upload homework photos only for their own submission. Storage paths
 
 - `{student_id}/{homework_id}/{timestamp}-{safeFileName}`
 
-The `student_id` path segment must match `auth.uid()`. The app does not use a service role key or public bucket access for homework photos.
-Students can remove only files connected to their own homework submission.
+The private storage bucket is `homework-submissions`. The `student_id` path segment must match `auth.uid()`. The app does not use a service role key or public bucket access for homework photos.
+Students can remove only files connected to their own homework submission. Removal should remove the `homework_files` metadata row and remove the private storage object when the app path performs storage cleanup.
 
-Class staff can view uploaded homework files for submissions in their classes. Private storage objects are accessed through signed URLs when shown in the app.
+Class staff can view uploaded homework files for submissions in their classes. Private storage objects are accessed through signed URLs when shown in the app. Missing files should not be shown as filename-only links; the UI should show an unavailable/missing state instead.
 
 ### Is this user the class owner?
 
@@ -296,6 +300,8 @@ Only an active `owner` membership can update, archive, or unarchive a class.
 
 Class archive behavior:
 
+- `display_name` is the optional student-facing class name.
+- `school_year` stores the optional school-year label.
 - Archive sets `classes.active = false` and `classes.archived_at = now()`.
 - Unarchive sets `classes.active = true` and `classes.archived_at = null`.
 - Archived classes are not hard deleted.
@@ -344,7 +350,7 @@ The current RLS model follows these rules:
 - `announcement_reads`: students can mark themselves as read; staff can view read rows for their classes.
 - `homework_assignments`: staff can view non-deleted rows in their classes; students can view visible rows in their classes; `owner` and `teacher` can manage.
 - `homework_submissions`: students can manage their own submissions; class staff can view.
-- `homework_files`: owners of submissions and class staff can view; submission owners can insert.
+- `homework_files`: owners of submissions and class staff can view; submission owners can insert and remove their own file metadata.
 - `knowledge_domains` and `knowledge_skills`: authenticated users can view; any class staff can manage.
 - `class_skill_progress`: class members can view; `owner` and `teacher` can manage.
 - `student_skill_self_assessments`: students can manage their own; staff can view students in shared classes.
