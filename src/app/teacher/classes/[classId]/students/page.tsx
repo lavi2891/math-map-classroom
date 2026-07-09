@@ -50,6 +50,8 @@ export default async function TeacherClassStudentsPage({
         חזרה לכיתות
       </Link>
       <TeacherStudentManagementPanel
+        canManageAccounts={classSummary.role === "owner"}
+        classCode={classSummary.classCode}
         classId={classId}
         className={classSummary.name}
         students={students}

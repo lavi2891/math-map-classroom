@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import {
   attachExistingStudentAction,
+  bulkCreateStudentsAction,
   createStudentAction,
   forcePasswordChangeAction,
   removeStudentFromClassAction,
@@ -13,6 +14,8 @@ import {
 import type { ManagedStudent, StudentLoginSlip } from "@/lib/db/studentManagement";
 
 type TeacherStudentManagementPanelProps = {
+  canManageAccounts: boolean;
+  classCode: string;
   classId: string;
   className: string;
   students: ManagedStudent[];
@@ -41,11 +44,25 @@ function formatDate(value?: string) {
   }).format(new Date(value));
 }
 
-function LoginSlipPanel({ slip }: { slip: StudentLoginSlip }) {
-  const text = `שם תלמיד: ${slip.displayName}
+function LoginSlipPanel({ slips }: { slips: StudentLoginSlip[] }) {
+  const text = useMemo(
+    () =>
+      slips
+        .map(
+          (slip) => `שם תלמיד: ${slip.displayName}
+כיתה: ${slip.className} (${slip.classCode})
 שם משתמש: ${slip.username}
 סיסמה זמנית: ${slip.temporaryPassword}
-בכניסה הראשונה תתבקש/י להחליף סיסמה.`;
+כתובת כניסה: ${slip.loginUrl}
+בכניסה הראשונה תתבקשו לבחור סיסמה חדשה`,
+        )
+        .join("\n\n---\n\n"),
+    [slips],
+  );
+
+  if (slips.length === 0) {
+    return null;
+  }
 
   return (
     <section className="print-slips rounded-lg border border-amber-200 bg-amber-50 p-4">
@@ -57,13 +74,31 @@ function LoginSlipPanel({ slip }: { slip: StudentLoginSlip }) {
         </p>
       </div>
 
-      <div className="mt-4 rounded-md border border-dashed border-stone-300 bg-white p-4 text-sm text-stone-900">
-        <p className="font-bold">{slip.displayName}</p>
-        <p>שם משתמש: {slip.username}</p>
-        <p>סיסמה זמנית: {slip.temporaryPassword}</p>
-        <p className="mt-3 text-xs text-stone-600">
-          בכניסה הראשונה תתבקש/י להחליף סיסמה.
-        </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {slips.map((slip) => (
+          <div
+            className="login-card break-inside-avoid rounded-md border border-dashed border-stone-300 bg-white p-4 text-sm text-stone-900"
+            key={`${slip.username}-${slip.temporaryPassword}`}
+          >
+            <p className="text-xs font-bold text-teal-700">מפת המתמטיקה</p>
+            <p className="mt-2 font-bold">{slip.displayName}</p>
+            <p>
+              כיתה: {slip.className} · {slip.classCode}
+            </p>
+            <p className="mt-2 text-left" dir="ltr">
+              {slip.username}
+            </p>
+            <p className="text-left font-bold" dir="ltr">
+              {slip.temporaryPassword}
+            </p>
+            <p className="mt-2 truncate text-left text-xs" dir="ltr">
+              {slip.loginUrl}
+            </p>
+            <p className="mt-3 text-xs text-stone-600">
+              בכניסה הראשונה תתבקשו לבחור סיסמה חדשה
+            </p>
+          </div>
+        ))}
       </div>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -89,11 +124,11 @@ function LoginSlipPanel({ slip }: { slip: StudentLoginSlip }) {
 function CreateStudentForm({
   classId,
   onCancel,
-  onSlip,
+  onSlips,
 }: {
   classId: string;
   onCancel: () => void;
-  onSlip: (slip: StudentLoginSlip) => void;
+  onSlips: (slips: StudentLoginSlip[]) => void;
 }) {
   const [state, formAction, pending] = useActionState(
     createStudentAction,
@@ -105,10 +140,10 @@ function CreateStudentForm({
 
   useEffect(() => {
     if (state.slip && !state.error) {
-      onSlip(state.slip);
+      onSlips([state.slip]);
       onCancel();
     }
-  }, [onCancel, onSlip, state.error, state.slip]);
+  }, [onCancel, onSlips, state.error, state.slip]);
 
   return (
     <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
@@ -179,6 +214,109 @@ function CreateStudentForm({
             type="submit"
           >
             יצירת תלמיד
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function BulkCreateStudentForm({
+  classCode,
+  classId,
+  onCancel,
+  onSlips,
+}: {
+  classCode: string;
+  classId: string;
+  onCancel: () => void;
+  onSlips: (slips: StudentLoginSlip[]) => void;
+}) {
+  const [state, formAction, pending] = useActionState(
+    bulkCreateStudentsAction,
+    initialState,
+  );
+
+  useEffect(() => {
+    if (state.slips && state.slips.length > 0) {
+      onSlips(state.slips);
+
+      if (!state.error) {
+        onCancel();
+      }
+    }
+  }, [onCancel, onSlips, state.error, state.slips]);
+
+  return (
+    <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
+      <h2 className="text-lg font-bold text-stone-950">יצירת תלמידים</h2>
+      <form action={formAction} className="mt-4 grid gap-3">
+        <input name="classId" type="hidden" value={classId} />
+
+        <div className="grid gap-3 md:grid-cols-3">
+          <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-800">
+            מספר תלמידים
+            <input
+              className="min-h-11 w-full rounded-md border border-stone-200 px-3 text-base font-normal"
+              defaultValue={10}
+              max={60}
+              min={1}
+              name="count"
+              type="number"
+            />
+          </label>
+          <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-800">
+            קוד התחלתי
+            <input
+              className="min-h-11 w-full rounded-md border border-stone-200 px-3 text-left text-base font-normal"
+              defaultValue="001"
+              dir="ltr"
+              name="startingCode"
+              type="text"
+            />
+          </label>
+          <label className="grid min-w-0 gap-1 text-sm font-semibold text-stone-800">
+            קידומת שם משתמש
+            <input
+              className="min-h-11 w-full rounded-md border border-stone-200 px-3 text-left text-base font-normal"
+              defaultValue={classCode.toLowerCase()}
+              dir="ltr"
+              name="usernamePrefix"
+              required
+              type="text"
+            />
+          </label>
+        </div>
+
+        <label className="grid gap-1 text-sm font-semibold text-stone-800">
+          שמות תלמידים, אחד בכל שורה
+          <textarea
+            className="min-h-32 rounded-md border border-stone-200 px-3 py-2 text-base font-normal"
+            name="names"
+            placeholder="אפשר להשאיר ריק וליצור לפי מספר בלבד"
+          />
+        </label>
+
+        {state.error ? (
+          <p className="rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+            {state.error}
+          </p>
+        ) : null}
+
+        <div className="grid gap-2 sm:grid-cols-2">
+          <button
+            className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-stone-700"
+            onClick={onCancel}
+            type="button"
+          >
+            ביטול
+          </button>
+          <button
+            className="min-h-11 rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white disabled:bg-stone-300"
+            disabled={pending}
+            type="submit"
+          >
+            צור תלמידים
           </button>
         </div>
       </form>
@@ -282,9 +420,11 @@ function AttachExistingUserForm({
 }
 
 function StudentActions({
+  canManageAccounts,
   classId,
   student,
 }: {
+  canManageAccounts: boolean;
   classId: string;
   student: ManagedStudent;
 }) {
@@ -302,6 +442,10 @@ function StudentActions({
   );
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
+
+  if (!canManageAccounts) {
+    return null;
+  }
 
   return (
     <div className="mt-3 grid gap-2">
@@ -408,43 +552,69 @@ function StudentActions({
           {forceState.message ?? removeState.message}
         </p>
       ) : null}
-      {resetState.slip ? <LoginSlipPanel slip={resetState.slip} /> : null}
+      {resetState.slip ? <LoginSlipPanel slips={[resetState.slip]} /> : null}
     </div>
   );
 }
 
 export function TeacherStudentManagementPanel({
+  canManageAccounts,
+  classCode,
   classId,
   className,
   students,
 }: TeacherStudentManagementPanelProps) {
-  const [openPanel, setOpenPanel] = useState<"create" | "attach" | null>(null);
-  const [latestSlip, setLatestSlip] = useState<StudentLoginSlip | null>(null);
+  const [openPanel, setOpenPanel] = useState<
+    "create" | "bulk" | "attach" | null
+  >(null);
+  const [latestSlips, setLatestSlips] = useState<StudentLoginSlip[]>([]);
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-2 sm:grid-cols-2">
-        <button
-          className="min-h-11 rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white"
-          onClick={() => setOpenPanel("create")}
-          type="button"
-        >
-          + תלמיד חדש
-        </button>
-        <button
-          className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-stone-700"
-          onClick={() => setOpenPanel("attach")}
-          type="button"
-        >
-          צרף משתמש קיים
-        </button>
-      </div>
+      {canManageAccounts ? (
+        <div className="grid gap-2 sm:grid-cols-3">
+          <button
+            className="min-h-11 rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white"
+            onClick={() => setOpenPanel("bulk")}
+            type="button"
+          >
+            יצירת תלמידים
+          </button>
+          <button
+            className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-stone-700"
+            onClick={() => setOpenPanel("create")}
+            type="button"
+          >
+            + תלמיד חדש
+          </button>
+          <button
+            className="min-h-11 rounded-md border border-stone-200 px-4 py-2 text-sm font-bold text-stone-700"
+            onClick={() => setOpenPanel("attach")}
+            type="button"
+          >
+            צרף משתמש קיים
+          </button>
+        </div>
+      ) : (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">
+          רק בעל הכיתה יכול ליצור תלמידים, לאפס סיסמאות ולהדפיס פרטי כניסה.
+        </p>
+      )}
+
+      {openPanel === "bulk" ? (
+        <BulkCreateStudentForm
+          classCode={classCode}
+          classId={classId}
+          onCancel={() => setOpenPanel(null)}
+          onSlips={setLatestSlips}
+        />
+      ) : null}
 
       {openPanel === "create" ? (
         <CreateStudentForm
           classId={classId}
           onCancel={() => setOpenPanel(null)}
-          onSlip={setLatestSlip}
+          onSlips={setLatestSlips}
         />
       ) : null}
 
@@ -455,7 +625,7 @@ export function TeacherStudentManagementPanel({
         />
       ) : null}
 
-      {latestSlip ? <LoginSlipPanel slip={latestSlip} /> : null}
+      <LoginSlipPanel slips={latestSlips} />
 
       <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
         <div>
@@ -487,7 +657,11 @@ export function TeacherStudentManagementPanel({
                   החלפת סיסמה אחרונה: {formatDate(student.passwordChangedAt)}
                 </p>
 
-                <StudentActions classId={classId} student={student} />
+                <StudentActions
+                  canManageAccounts={canManageAccounts}
+                  classId={classId}
+                  student={student}
+                />
               </article>
             ))}
           </div>
@@ -511,9 +685,17 @@ export function TeacherStudentManagementPanel({
 
           .print-slips {
             position: absolute;
-            inset-block-start: 24px;
-            inset-inline-start: 24px;
-            width: 320px;
+            inset-block-start: 16px;
+            inset-inline-start: 16px;
+            width: calc(100% - 32px);
+            border: 0;
+            background: white;
+          }
+
+          .login-card {
+            page-break-inside: avoid;
+            width: 85mm;
+            min-height: 55mm;
           }
         }
       `}</style>

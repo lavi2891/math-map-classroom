@@ -4,15 +4,15 @@ import { createClient } from "@supabase/supabase-js";
 
 export function createSupabaseAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const missingVars: string[] = [];
 
   if (!supabaseUrl) {
     missingVars.push("NEXT_PUBLIC_SUPABASE_URL");
   }
 
-  if (!supabaseSecretKey) {
-    missingVars.push("SUPABASE_SECRET_KEY");
+  if (!supabaseServiceRoleKey) {
+    missingVars.push("SUPABASE_SERVICE_ROLE_KEY");
   }
 
   if (missingVars.length > 0) {
@@ -23,18 +23,18 @@ export function createSupabaseAdminClient() {
     );
   }
 
-  if (!supabaseUrl || !supabaseSecretKey) {
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
     throw new Error("Missing required Supabase admin environment variable.");
   }
 
-  return createClient(supabaseUrl, supabaseSecretKey, {
+  return createClient(supabaseUrl, supabaseServiceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
     global: {
       headers: {
-        Authorization: `Bearer ${supabaseSecretKey}`,
+        Authorization: `Bearer ${supabaseServiceRoleKey}`,
       },
     },
   });

@@ -5,6 +5,7 @@ Source of truth:
 - `supabase/migrations/0001_current_schema_reference.sql`
 - `supabase/migrations/0002_announcements_workflow.sql`
 - `supabase/migrations/0003_homework_lifecycle.sql`
+- `supabase/migrations/0005_student_password_onboarding.sql`
 - `supabase/migrations/0006_student_management.sql`
 - `supabase/migrations/0007_refine_student_management.sql`
 
@@ -115,7 +116,10 @@ Columns:
 
 Current app usage:
 
-- Teachers with active `owner` or `teacher` membership can create students, attach existing users to a class, reset temporary passwords, force password changes, and remove students from a class by deactivating the membership.
+- Class owners can create student accounts in bulk or one at a time, reset temporary passwords, force password changes, and print temporary login cards.
+- Student usernames created by the bulk flow use the selected class code prefix and per-class `student_code`, for example `z7a001`.
+- Teachers with active staff membership can view active students in their classes.
+- Attaching existing users and deactivating memberships still writes through `class_memberships`; inactive memberships preserve the user and history.
 - Logged-in users can change their own password from the required password-change wall or profile page.
 - A temporary password is returned to the UI only immediately after creation/reset so it can be printed or copied.
 

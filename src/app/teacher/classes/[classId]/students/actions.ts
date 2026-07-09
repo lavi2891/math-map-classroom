@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import {
   attachExistingStudentToClass,
+  bulkCreateManagedStudents,
   createManagedStudent,
   forceManagedStudentPasswordChange,
   removeStudentFromClass,
@@ -17,6 +18,7 @@ export type StudentManagementActionState = {
   message?: string;
   profile?: StudentProfileSearchResult;
   slip?: StudentLoginSlip;
+  slips?: StudentLoginSlip[];
 };
 
 function getFormString(formData: FormData, field: string) {
@@ -42,6 +44,7 @@ export async function createStudentAction(
   const result = await createManagedStudent({
     classId,
     displayName: getFormString(formData, "displayName"),
+    studentCode: getFormString(formData, "studentCode"),
     temporaryPassword: getFormString(formData, "temporaryPassword"),
     username: getFormString(formData, "username"),
   });
@@ -55,6 +58,39 @@ export async function createStudentAction(
   return {
     message: "התלמיד נוצר בהצלחה.",
     slip: result.slip,
+  };
+}
+
+export async function bulkCreateStudentsAction(
+  _previousState: StudentManagementActionState,
+  formData: FormData,
+): Promise<StudentManagementActionState> {
+  const classId = getFormString(formData, "classId");
+  const names = getFormString(formData, "names")
+    .split(/\r?\n/)
+    .map((name) => name.trim())
+    .filter(Boolean);
+  const count = Number.parseInt(getFormString(formData, "count"), 10);
+  const result = await bulkCreateManagedStudents({
+    classId,
+    count: Number.isFinite(count) ? count : 0,
+    names,
+    startingCode: getFormString(formData, "startingCode") || "001",
+    usernamePrefix: getFormString(formData, "usernamePrefix"),
+  });
+
+  if (!result.success) {
+    return {
+      error: result.error ?? "לא הצלחנו ליצור תלמידים.",
+      slips: result.slips,
+    };
+  }
+
+  revalidateStudents(classId);
+
+  return {
+    message: "התלמידים נוצרו בהצלחה.",
+    slips: result.slips,
   };
 }
 

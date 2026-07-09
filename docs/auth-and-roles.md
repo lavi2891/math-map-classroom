@@ -5,6 +5,7 @@ Source of truth:
 - `supabase/migrations/0001_current_schema_reference.sql`
 - `supabase/migrations/0002_announcements_workflow.sql`
 - `supabase/migrations/0003_homework_lifecycle.sql`
+- `supabase/migrations/0005_student_password_onboarding.sql`
 - `supabase/migrations/0006_student_management.sql`
 - `supabase/migrations/0007_refine_student_management.sql`
 
@@ -211,11 +212,12 @@ Managers must be authorized through `class_memberships`. Do not use `profiles.ro
 
 ### Who can manage students?
 
-Student managers are active `owner` and `teacher` memberships in the target class.
+Student account managers are active `owner` memberships in the target class for the current MVP. Staff can view class students, but account creation/reset actions are owner-only for now.
 
-Managers can:
+Class owners can:
 
 - View active students in the class.
+- Bulk-create student accounts with usernames generated from class code plus per-class student code.
 - Create a student account with username-based Supabase Auth email.
 - Create or update the student's `profiles` row.
 - Create or update the student's `class_memberships` row for that class.
@@ -224,9 +226,11 @@ Managers can:
 - Reset a student's temporary password.
 - Set `profiles.must_change_password = true` to force a password change.
 - Remove a student from a class by setting `class_memberships.active = false`.
-- Print or copy temporary login slips immediately after creation/reset.
+- Print or copy temporary login cards immediately after creation/reset.
 
-Temporary passwords are not stored in the database. Admin Auth calls for student creation and reset must happen only in server code with the Supabase secret key. Browser code must never import the admin client or receive the service/secret key.
+Each printable login card includes the system name, class name, class code, username, temporary password, login URL, and the note that the student must choose a new password on first login.
+
+Temporary passwords are not stored in the database. Admin Auth calls for student creation and reset must happen only in server code with `SUPABASE_SERVICE_ROLE_KEY`. Browser code must never import the admin client or receive the service role key.
 
 Removing a student from a class does not delete `auth.users`, `profiles`, homework submissions, homework files, practice sessions, or self-assessments. It only deactivates that class membership. The same user can remain active in other classes or be reattached later.
 

@@ -6,12 +6,17 @@ export type ManagedStudent = {
   displayName: string;
   mustChangePassword: boolean;
   passwordChangedAt?: string;
+  studentCode?: string;
   userId: string;
   username: string;
 };
 
 export type StudentLoginSlip = {
+  classCode: string;
+  className: string;
   displayName: string;
+  loginUrl: string;
+  studentCode?: string;
   temporaryPassword: string;
   username: string;
 };
@@ -25,8 +30,18 @@ export type StudentProfileSearchResult = {
 export type CreateStudentInput = {
   classId: string;
   displayName?: string;
+  studentCode?: string;
   temporaryPassword?: string;
   username: string;
+};
+
+export type BulkCreateStudentsInput = {
+  classId: string;
+  count: number;
+  names: string[];
+  startingCode: string;
+  temporaryPassword?: string;
+  usernamePrefix: string;
 };
 
 export type StudentMutationResult = {
@@ -34,7 +49,14 @@ export type StudentMutationResult = {
   message?: string;
   profile?: StudentProfileSearchResult;
   slip?: StudentLoginSlip;
+  slips?: StudentLoginSlip[];
   success: boolean;
+};
+
+type ManagedClassRow = {
+  class_code: string;
+  id: string;
+  name: string;
 };
 
 type ProfileRow = {
@@ -58,6 +80,7 @@ type MembershipStudentRow = {
         username: string | null;
       }[]
     | null;
+  student_code: string | null;
   user_id: string;
 };
 
@@ -81,6 +104,10 @@ export function isValidStudentUsername(username: string) {
 
 export function getStudentAuthEmail(username: string) {
   return `${username}@students.local`;
+}
+
+function getLoginUrl() {
+  return process.env.NEXT_PUBLIC_APP_URL ?? "https://example.com/login";
 }
 
 export function generateTemporaryPassword() {
@@ -111,6 +138,45 @@ export async function canManageClass(classId: string, userId?: string) {
     .maybeSingle();
 
   return Boolean(data);
+}
+
+async function canOwnClass(classId: string, userId?: string) {
+  const currentUser = userId ? { id: userId } : await getCurrentUser();
+
+  if (!currentUser) {
+    return false;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("class_memberships")
+    .select("class_id")
+    .eq("class_id", classId)
+    .eq("user_id", currentUser.id)
+    .eq("role", "owner")
+    .eq("active", true)
+    .maybeSingle();
+
+  return Boolean(data);
+}
+
+async function getOwnedClass(classId: string, userId: string) {
+  if (!(await canOwnClass(classId, userId))) {
+    return null;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("classes")
+    .select("id, name, class_code")
+    .eq("id", classId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data as ManagedClassRow;
 }
 
 async function verifyActiveStudentInClass(classId: string, studentId: string) {
@@ -144,7 +210,7 @@ export async function getManagedStudents(classId: string) {
   const { data, error } = await supabase
     .from("class_memberships")
     .select(
-      "user_id, profiles(display_name, username, must_change_password, password_changed_at)",
+      "user_id, student_code, profiles(display_name, username, must_change_password, password_changed_at)",
     )
     .eq("class_id", classId)
     .eq("role", "student")
@@ -169,6 +235,7 @@ export async function getManagedStudents(classId: string) {
           displayName: getDisplayName(profile?.display_name, username),
           mustChangePassword: profile?.must_change_password ?? false,
           passwordChangedAt: profile?.password_changed_at ?? undefined,
+          studentCode: row.student_code ?? undefined,
           userId: row.user_id,
           username,
         },
@@ -257,6 +324,7 @@ async function createManagedStudentRecord(
   studentId: string,
   username: string,
   displayName: string | null,
+  studentCode: string | null,
   teacherId: string,
 ) {
   const supabase = await createSupabaseServerClient();
@@ -278,6 +346,25 @@ async function createManagedStudentRecord(
     return false;
   }
 
+  if (studentCode) {
+    const { error: codeError } = await supabase
+      .from("class_memberships")
+      .update({ student_code: studentCode, updated_at: new Date().toISOString() })
+      .eq("class_id", classId)
+      .eq("user_id", studentId)
+      .eq("role", "student");
+
+    if (codeError) {
+      console.error("createManagedStudentRecord student code update failed", {
+        errorMessage: codeError.message,
+        studentId,
+        username,
+      });
+
+      return false;
+    }
+  }
+
   const profile = await getProfileByUsername(username);
   const isStudentAttached = await verifyActiveStudentInClass(classId, studentId);
 
@@ -293,6 +380,25 @@ async function createManagedStudentRecord(
   }
 
   return true;
+}
+
+function buildLoginSlip(input: {
+  classCode: string;
+  className: string;
+  displayName: string | null;
+  studentCode?: string | null;
+  temporaryPassword: string;
+  username: string;
+}) {
+  return {
+    classCode: input.classCode,
+    className: input.className,
+    displayName: getDisplayName(input.displayName, input.username),
+    loginUrl: getLoginUrl(),
+    studentCode: input.studentCode ?? undefined,
+    temporaryPassword: input.temporaryPassword,
+    username: input.username,
+  } satisfies StudentLoginSlip;
 }
 
 async function setPasswordRequirementForClass(
@@ -523,11 +629,18 @@ export async function createManagedStudent(
   const teacher = await getCurrentUser();
   const username = normalizeStudentUsername(input.username);
   const displayName = input.displayName?.trim() || null;
+  const studentCode = input.studentCode?.trim() || null;
   const temporaryPassword =
     input.temporaryPassword?.trim() || generateTemporaryPassword();
 
-  if (!teacher || !(await canManageClass(input.classId, teacher.id))) {
+  if (!teacher) {
     return { error: "אין לך הרשאה לבצע פעולה זו.", success: false };
+  }
+
+  const managedClass = await getOwnedClass(input.classId, teacher.id);
+
+  if (!managedClass) {
+    return { error: "רק בעל הכיתה יכול לנהל חשבונות תלמידים.", success: false };
   }
 
   if (!username || !temporaryPassword) {
@@ -584,6 +697,7 @@ export async function createManagedStudent(
     studentId,
     username,
     displayName,
+    studentCode,
     teacher.id,
   );
 
@@ -596,13 +710,91 @@ export async function createManagedStudent(
   }
 
   return {
-    slip: {
-      displayName: getDisplayName(displayName, username),
+    slip: buildLoginSlip({
+      classCode: managedClass.class_code,
+      className: managedClass.name,
+      displayName,
+      studentCode,
       temporaryPassword,
       username,
-    },
+    }),
     success: true,
   };
+}
+
+function parseStudentCode(value: string) {
+  const parsed = Number.parseInt(value, 10);
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function formatStudentCode(value: number, width: number) {
+  return String(value).padStart(Math.max(width, 3), "0");
+}
+
+export async function bulkCreateManagedStudents(
+  input: BulkCreateStudentsInput,
+): Promise<StudentMutationResult> {
+  const teacher = await getCurrentUser();
+
+  if (!teacher) {
+    return { error: "אין לך הרשאה לבצע פעולה זו.", success: false };
+  }
+
+  const managedClass = await getOwnedClass(input.classId, teacher.id);
+
+  if (!managedClass) {
+    return { error: "רק בעל הכיתה יכול לנהל חשבונות תלמידים.", success: false };
+  }
+
+  const usernamePrefix = normalizeStudentUsername(input.usernamePrefix);
+  const startingCode = input.startingCode.trim() || "001";
+  const codeStart = parseStudentCode(startingCode);
+  const codeWidth = Math.max(startingCode.length, 3);
+  const names = input.names.map((name) => name.trim()).filter(Boolean);
+  const totalCount = names.length > 0 ? names.length : input.count;
+
+  if (!usernamePrefix || totalCount < 1 || totalCount > 60) {
+    return { error: "יש להזין פרטי יצירה תקינים.", success: false };
+  }
+
+  if (!isValidStudentUsername(usernamePrefix)) {
+    return {
+      error: "קידומת שם המשתמש יכולה לכלול אותיות באנגלית, מספרים, קו תחתון ומקף בלבד.",
+      success: false,
+    };
+  }
+
+  const slips: StudentLoginSlip[] = [];
+
+  for (let index = 0; index < totalCount; index += 1) {
+    const studentCode = formatStudentCode(codeStart + index, codeWidth);
+    const username = `${usernamePrefix}${studentCode}`;
+    const displayName = names[index] || null;
+    const temporaryPassword =
+      input.temporaryPassword?.trim() || generateTemporaryPassword();
+    const result = await createManagedStudent({
+      classId: input.classId,
+      displayName: displayName ?? undefined,
+      studentCode,
+      temporaryPassword,
+      username,
+    });
+
+    if (!result.success || !result.slip) {
+      return {
+        error:
+          result.error ??
+          `לא הצלחנו ליצור את התלמיד עם הקוד ${studentCode}.`,
+        slips,
+        success: false,
+      };
+    }
+
+    slips.push(result.slip);
+  }
+
+  return { slips, success: true };
 }
 
 export async function resetManagedStudentPassword(
@@ -611,8 +803,14 @@ export async function resetManagedStudentPassword(
 ): Promise<StudentMutationResult> {
   const teacher = await getCurrentUser();
 
-  if (!teacher || !(await canManageClass(classId, teacher.id))) {
+  if (!teacher) {
     return { error: "אין לך הרשאה לבצע פעולה זו.", success: false };
+  }
+
+  const managedClass = await getOwnedClass(classId, teacher.id);
+
+  if (!managedClass) {
+    return { error: "רק בעל הכיתה יכול לנהל חשבונות תלמידים.", success: false };
   }
 
   if (!(await verifyActiveStudentInClass(classId, studentId))) {
@@ -656,11 +854,14 @@ export async function resetManagedStudentPassword(
   }
 
   return {
-    slip: {
+    slip: buildLoginSlip({
+      classCode: managedClass.class_code,
+      className: managedClass.name,
       displayName: student.displayName,
+      studentCode: student.studentCode,
       temporaryPassword,
       username: student.username,
-    },
+    }),
     success: true,
   };
 }
@@ -671,7 +872,7 @@ export async function forceManagedStudentPasswordChange(
 ) {
   const teacher = await getCurrentUser();
 
-  if (!teacher || !(await canManageClass(classId, teacher.id))) {
+  if (!teacher || !(await canOwnClass(classId, teacher.id))) {
     return { error: "אין לך הרשאה לבצע פעולה זו.", success: false };
   }
 
