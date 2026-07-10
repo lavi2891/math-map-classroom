@@ -11,6 +11,7 @@ Source of truth:
 - `supabase/migrations/0006_student_management.sql`
 - `supabase/migrations/0007_refine_student_management.sql`
 - `supabase/migrations/0008_class_management.sql`
+- `supabase/migrations/0009_knowledge_map_refinement.sql`
 
 This project uses Supabase Auth for identity and `public.profiles` for profile metadata. Authorization is contextual and class-based through `public.class_memberships`.
 
@@ -316,6 +317,24 @@ Helper:
 
 - `public.is_staff_of_user(target_user_id uuid)`
 
+### Who can use the knowledge map?
+
+The knowledge map is shared by grade through `knowledge_domains` and `knowledge_skills`.
+
+Class progress is class-specific through `class_skill_progress`:
+
+- Class members can view progress for their class.
+- Active `owner` and `teacher` memberships can mark/unmark skills as taught.
+- `viewer` can view class progress but cannot update it.
+
+Student self assessment is class-specific through `student_skill_self_assessments`:
+
+- Primary key is `class_id + student_id + skill_id`.
+- Students can update only their own self assessments in classes where they have active `student` membership.
+- Students can report on skills even if the class has not marked them as taught.
+- Staff can view self assessments for students in classes where they have staff membership.
+- Self assessment is separate from actual performance. Performance scoring is not implemented yet.
+
 ## Helper Functions In The Migration
 
 Current class-membership helpers:
@@ -352,8 +371,9 @@ The current RLS model follows these rules:
 - `homework_submissions`: students can manage their own submissions; class staff can view.
 - `homework_files`: owners of submissions and class staff can view; submission owners can insert and remove their own file metadata.
 - `knowledge_domains` and `knowledge_skills`: authenticated users can view; any class staff can manage.
-- `class_skill_progress`: class members can view; `owner` and `teacher` can manage.
-- `student_skill_self_assessments`: students can manage their own; staff can view students in shared classes.
+- `skill_resources`: authenticated users can view; any class staff can manage.
+- `class_skill_progress`: class members can view; `owner` and `teacher` can manage; `viewer` can view only.
+- `student_skill_self_assessments`: students can manage their own class-scoped reports; staff can view students in shared classes.
 - `homework_skills`: class members can view; `owner` and `teacher` can manage through the homework class.
 - `practice_sessions`: students can create their own; staff can view students in shared classes.
 

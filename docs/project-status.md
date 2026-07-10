@@ -4,7 +4,7 @@
 
 Hebrew RTL mobile-first classroom math management system.
 
-The system has teacher and student roles. Current focus is class management, announcements, homework, submissions, homework photos, and student onboarding. Knowledge map and deeper practice integration are planned later.
+The system has teacher and student roles. Current focus is class management, announcements, homework, submissions, homework photos, student onboarding, and the first DB-backed knowledge map refinement.
 
 ## 2. Current Implemented Features
 
@@ -21,6 +21,9 @@ The system has teacher and student roles. Current focus is class management, ann
 - Homework submissions with status and understanding.
 - Homework photo uploads and removal through private storage.
 - Homework tags foundation and display.
+- Knowledge map refinement for grade/class context.
+- Teacher class knowledge status with taught/not-taught tracking.
+- Student class knowledge map with self assessment.
 - Student management for class owners.
 - Temporary passwords and first-login password-change onboarding.
 - Printable student login cards.
@@ -54,10 +57,12 @@ Teacher:
 - `0006_student_management.sql` - student password events and student-management policy support.
 - `0007_refine_student_management.sql` - student-management RPCs and service-role grants for backend account operations.
 - `0008_class_management.sql` - class display name, school year, active/archive fields, and active-aware class visibility policies.
+- `0009_knowledge_map_refinement.sql` - skill types, skill resources, and class-scoped student skill self assessments.
 
 ## 5. Known Limitations / TODO
 
-- Knowledge map is not fully implemented yet.
+- Knowledge map is refined but still in progress.
+- Performance scoring/mastery is not implemented yet; the app shows a no-performance-data placeholder.
 - Tags/skills for homework are not complete yet.
 - Atomic Math integration is external link only / not yet connected.
 - Storage orphan cleanup is manual or partial.
@@ -68,7 +73,7 @@ Teacher:
 
 - Finish class management polish.
 - Student management + printable login cards.
-- Knowledge map.
+- Continue knowledge map polish and evidence-based performance.
 - Tags/skills for homework.
 - Class status dashboard.
 - Atomic Math integration.

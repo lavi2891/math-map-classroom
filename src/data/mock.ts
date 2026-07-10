@@ -5,8 +5,6 @@ import type {
   ClassMembership,
   ClassSummary,
   HomeworkAssignment,
-  KnowledgeDomain,
-  KnowledgeSkill,
   Profile,
 } from "@/types";
 
@@ -194,13 +192,13 @@ export const announcements: Announcement[] = [
   },
 ];
 
-export const knowledgeSkills: KnowledgeSkill[] = [
+export const knowledgeSkills = [
   { id: "skill-1", title: "חיבור שברים", status: "strong", progress: 86 },
   { id: "skill-2", title: "אחוזים", status: "practice", progress: 58 },
   { id: "skill-3", title: "משוואות", status: "new", progress: 24 },
 ];
 
-export const knowledgeDomains: KnowledgeDomain[] = [
+export const knowledgeDomains = [
   {
     id: "domain-1",
     title: "מספרים ופעולות",

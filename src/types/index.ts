@@ -26,7 +26,13 @@ export type {
 export type {
   KnowledgeDomain,
   KnowledgeSkill,
-  KnowledgeSkillStatus,
+  KnowledgeSkillType,
+  KnowledgeSkillTypeSection,
+  SkillResource,
+  SkillResourceType,
+  SkillSelfAssessmentSummary,
+  StudentKnowledgeMap,
+  TeacherKnowledgeStatus,
 } from "./knowledge";
 
 export type NavItem = {

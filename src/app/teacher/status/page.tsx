@@ -1,23 +1,39 @@
 import { PageHeader } from "@/components/app/PageHeader";
-import { TeacherStatusCard } from "@/components/teacher/TeacherStatusCard";
-import { getTeacherStatusCards } from "@/lib/db/knowledge";
+import { TeacherKnowledgePanel } from "@/components/teacher/TeacherKnowledgePanel";
+import { getTeacherClasses } from "@/lib/db/classes";
+import { getTeacherClassKnowledgeStatus } from "@/lib/db/knowledge";
 
-export default function TeacherStatusPage() {
-  const cards = getTeacherStatusCards();
+type TeacherStatusPageProps = {
+  searchParams?: Promise<{
+    classId?: string;
+  }>;
+};
+
+export default async function TeacherStatusPage({
+  searchParams,
+}: TeacherStatusPageProps) {
+  const params = await searchParams;
+  const classes = await getTeacherClasses();
+  const selectedClassId =
+    classes.find((classSummary) => classSummary.id === params?.classId)?.id ??
+    classes[0]?.id;
+  const status = selectedClassId
+    ? await getTeacherClassKnowledgeStatus(selectedClassId)
+    : null;
 
   return (
     <div className="space-y-4">
       <PageHeader
         eyebrow="מצב"
-        title="מצב"
-        description="תמונת מצב כיתתית עם מוקדים להמשך עבודה."
+        title="מפת ידע כיתתית"
+        description="מעקב אחר מיומנויות שנלמדו ודיווחי הבנה של התלמידים."
       />
 
-      <div className="grid gap-3">
-        {cards.map((card) => (
-          <TeacherStatusCard key={card.id} card={card} />
-        ))}
-      </div>
+      <TeacherKnowledgePanel
+        classes={classes}
+        selectedClassId={selectedClassId}
+        status={status}
+      />
     </div>
   );
 }

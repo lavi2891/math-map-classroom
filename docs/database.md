@@ -11,6 +11,7 @@ Source of truth:
 - `supabase/migrations/0006_student_management.sql`
 - `supabase/migrations/0007_refine_student_management.sql`
 - `supabase/migrations/0008_class_management.sql`
+- `supabase/migrations/0009_knowledge_map_refinement.sql`
 
 This document describes the current effective Supabase schema after all migrations listed above. Earlier definitions in `0001_current_schema_reference.sql` create the first version of the schema, then later sections and migrations replace the global/legacy class role model.
 
@@ -359,11 +360,36 @@ Columns:
 - `title text`
 - `description text`
 - `source_level public.skill_source_level`
+- `skill_type text` - one of `prerequisite`, `curriculum`, `support`, `enrichment`, or `system`.
 - `required_knowledge text`
 - `diagnostic_question text`
 - `external_practice_url text`
 - `sort_order int`
 - `active boolean`
+- `created_at timestamptz`
+
+`skill_type` meanings:
+
+- `prerequisite` - ידע קודם.
+- `curriculum` - תוכנית השנה.
+- `support` - מיומנות תומכת.
+- `enrichment` - העשרה.
+- `system` - מערכת/מטא.
+
+The knowledge map itself is shared by grade through `knowledge_domains` and `knowledge_skills`.
+
+### `skill_resources`
+
+Optional links attached to knowledge skills. These are URL resources only; file uploads are not part of this workflow.
+
+Columns:
+
+- `id uuid primary key`
+- `skill_id uuid references knowledge_skills(id)`
+- `resource_type text` - one of `practice`, `video`, `worksheet`, `explanation`, `geogebra`, `form`, or `other`.
+- `title text`
+- `url text`
+- `sort_order int`
 - `created_at timestamptz`
 
 ### `class_skill_progress`
@@ -385,10 +411,11 @@ Primary key:
 
 ### `student_skill_self_assessments`
 
-Student self-reported understanding per skill.
+Student self-reported understanding per class and skill.
 
 Columns:
 
+- `class_id uuid references classes(id)`
 - `student_id uuid references profiles(id)`
 - `skill_id uuid references knowledge_skills(id)`
 - `level public.understanding_level`
@@ -397,7 +424,13 @@ Columns:
 
 Primary key:
 
-- `(student_id, skill_id)`
+- `(class_id, student_id, skill_id)`
+
+Important behavior:
+
+- Self assessment is class-scoped so the same student can report differently in different classes.
+- Students may report on any skill in their active class context, even if `class_skill_progress.is_taught = false`.
+- Self assessment is not performance/mastery evidence. Performance data will later come from `practice_sessions`, homework, quizzes, or other evidence.
 
 ### `homework_skills`
 
@@ -491,5 +524,8 @@ RLS is enabled for the app tables. RLS is the real security layer; frontend rout
 - Students can create/update their own announcement read confirmations.
 - Staff can view student submissions for classes they are connected to.
 - Staff can view announcement read-confirmation counts and details for their classes.
+- Authenticated users can view `knowledge_domains`, `knowledge_skills`, and `skill_resources`.
+- Class members can view `class_skill_progress`; `owner` and `teacher` can manage it.
+- Students can manage their own class-scoped `student_skill_self_assessments`; staff can view reports for their classes.
 
 See `docs/auth-and-roles.md` for the role rules and helper functions.
